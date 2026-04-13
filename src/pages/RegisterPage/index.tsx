@@ -13,6 +13,9 @@ import { useAuth } from "../../context/AuthContext";
 type RegisterFormValues = {
   username: string;
   nickname?: string;
+  mobile: string;
+  avatar?: string;
+  introduction?: string;
   password: string;
   confirmPassword: string;
 };
@@ -30,8 +33,11 @@ export const RegisterPage = () => {
         username: values.username,
         password: values.password,
         nickname: values.nickname,
+        mobile: values.mobile,
+        avatar: values.avatar,
+        introduction: values.introduction,
       });
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     } catch {
       // 错误提示在 register 内部处理
     }
@@ -61,6 +67,33 @@ export const RegisterPage = () => {
           </Form.Item>
           <Form.Item name="nickname">
             <Input placeholder="昵称（可选）" />
+          </Form.Item>
+          <Form.Item
+            name="mobile"
+            rules={[
+              { required: true, message: "请输入手机号" },
+              {
+                validator: async (_, v) => {
+                  const s = v != null ? String(v).trim() : "";
+                  if (!/^1\d{10}$/.test(s)) {
+                    throw new Error("请输入以 1 开头的 11 位手机号");
+                  }
+                },
+              },
+            ]}
+          >
+            <Input placeholder="手机号（可选，11位）" maxLength={11} allowClear />
+          </Form.Item>
+          <Form.Item name="avatar">
+            <Input placeholder="头像 URL（可选）" allowClear />
+          </Form.Item>
+          <Form.Item name="introduction">
+            <Input.TextArea
+              rows={3}
+              placeholder="个人简介（可选）"
+              showCount
+              maxLength={255}
+            />
           </Form.Item>
           <Form.Item
             name="password"

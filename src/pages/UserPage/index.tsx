@@ -8,15 +8,21 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   message,
+  Image as AntdImage,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { useAuth } from "../../context/AuthContext";
 import { rbacApiService } from "../../services/rbacApi";
 import type { User, Role, UserStatus } from "../../types/rbac";
 
 type UserFormValues = {
   username: string;
   nickname?: string;
+  mobile?: string;
+  avatar?: string;
+  introduction?: string;
   status: UserStatus;
   password?: string;
 };
@@ -24,6 +30,7 @@ type UserFormValues = {
 const DEFAULT_PAGE_SIZE = 10;
 
 export const UserPage = () => {
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState({
@@ -66,41 +73,37 @@ export const UserPage = () => {
     void fetchData(1, DEFAULT_PAGE_SIZE);
   }, []);
 
-  const openCreateModal = () => {
-    setEditingUser(null);
-    setUserModalOpen(true);
-    form.resetFields();
-    form.setFieldsValue({ status: "enabled" });
-  };
-
   const openEditModal = (record: User) => {
     setEditingUser(record);
     setUserModalOpen(true);
     form.setFieldsValue({
       username: record.username,
       nickname: record.nickname,
+      mobile: record.mobile,
+      avatar: record.avatar,
+      introduction: record.introduction,
       status: record.status,
-      password: undefined,
     });
   };
+
+  const isCurrentUser = (record: User) =>
+    String(record.id) === String(currentUser?.id ?? "");
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      if (editingUser) {
-        const { password, ...rest } = values;
-        await rbacApiService.updateUser(editingUser.id, {
-          ...rest,
-          ...(password ? { password } : {}),
-        });
-        message.success("更新用户成功");
-      } else {
-        await rbacApiService.createUser({
-          ...values,
-          roleIds: [],
-        } as any);
-        message.success("创建用户成功");
+      if (!editingUser) {
+        return;
       }
+      await rbacApiService.updateUser(editingUser.id, {
+        username: values.username,
+        nickname: values.nickname,
+        mobile: values.mobile,
+        avatar: values.avatar,
+        introduction: values.introduction,
+        status: values.status,
+      });
+      message.success("更新用户成功");
       setEditingUser(null);
       setUserModalOpen(false);
       await fetchData(pagination.current, pagination.pageSize);
@@ -111,26 +114,6 @@ export const UserPage = () => {
       }
       message.error("保存用户失败");
     }
-  };
-
-  const handleDelete = async (record: User) => {
-    Modal.confirm({
-      title: "确认删除该用户？",
-      content: `删除后将无法恢复：${record.username}`,
-      okText: "删除",
-      cancelText: "取消",
-      onOk: async () => {
-        try {
-          await rbacApiService.deleteUser(record.id);
-          message.success("删除用户成功");
-          await fetchData(pagination.current, pagination.pageSize);
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          message.error("删除用户失败");
-        }
-      },
-    });
   };
 
   const handleOpenRoleModal = (record: User) => {
@@ -160,6 +143,24 @@ export const UserPage = () => {
     {
       title: "昵称",
       dataIndex: "nickname",
+    },
+    {
+      title: "手机号",
+      dataIndex: "mobile",
+    },
+    {
+      title: "头像",
+      dataIndex: "avatar",
+      render: (avatar: string | undefined) =>
+        avatar ? (
+          <AntdImage src={avatar} width={32} height={32} alt="" />
+        ) : (
+          <span style={{ color: "#999" }}>—</span>
+        ),
+    },
+    {
+      title: "简介",
+      dataIndex: "introduction",
     },
     {
       title: "状态",
@@ -194,32 +195,39 @@ export const UserPage = () => {
     },
     {
       title: "操作",
-      render: (_, record) => (
-        <Space>
-          <Button type="link" onClick={() => openEditModal(record)}>
-            编辑
-          </Button>
-          <Button type="link" onClick={() => handleOpenRoleModal(record)}>
-            分配角色
-          </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
-            删除
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {
+        const self = isCurrentUser(record);
+        return (
+          <Space>
+            <Button type="link" onClick={() => openEditModal(record)}>
+              编辑
+            </Button>
+            <Tooltip
+              title={
+                self
+                  ? "不能为自己分配角色，避免出现权限错乱；请使用其他管理员账号操作。"
+                  : undefined
+              }
+            >
+              <Button
+                type="link"
+                disabled={self}
+                onClick={() => !self && handleOpenRoleModal(record)}
+              >
+                分配角色
+              </Button>
+            </Tooltip>
+          </Space>
+        );
+      },
     },
   ];
 
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" onClick={openCreateModal}>
-          新增用户
-        </Button>
         <Button
-          onClick={() =>
-            fetchData(pagination.current, pagination.pageSize)
-          }
+          onClick={() => fetchData(pagination.current, pagination.pageSize)}
         >
           刷新
         </Button>
@@ -243,7 +251,7 @@ export const UserPage = () => {
 
       <Modal
         open={userModalOpen}
-        title={editingUser ? "编辑用户" : "新增用户"}
+        title="编辑用户"
         okText="确定"
         cancelText="取消"
         onCancel={() => {
@@ -265,14 +273,31 @@ export const UserPage = () => {
             <Input placeholder="显示使用的昵称" />
           </Form.Item>
           <Form.Item
-            label="密码"
-            name="password"
-            rules={
-              editingUser ? [] : [{ required: true, message: "请输入密码" }]
-            }
+            label="手机号"
+            name="mobile"
+            rules={[
+              {
+                validator: async (_, v) => {
+                  const s = v != null ? String(v).trim() : "";
+                  if (!s) return;
+                  if (!/^1\d{10}$/.test(s)) {
+                    throw new Error("请输入以 1 开头的 11 位手机号");
+                  }
+                },
+              },
+            ]}
           >
-            <Input.Password
-              placeholder={editingUser ? "留空则不修改密码" : "登录密码"}
+            <Input placeholder="11 位手机号码" maxLength={11} allowClear />
+          </Form.Item>
+          <Form.Item label="头像" name="avatar">
+            <Input placeholder="头像图片 URL" allowClear />
+          </Form.Item>
+          <Form.Item label="简介" name="introduction">
+            <Input.TextArea
+              rows={3}
+              placeholder="个人简介"
+              showCount
+              maxLength={255}
             />
           </Form.Item>
           <Form.Item

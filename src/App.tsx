@@ -6,6 +6,7 @@
  * @Description:
  */
 import { ReactNode } from "react";
+import { Spin } from "antd";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "antd/dist/reset.css";
 import AdminLayout from "./layouts/AdminLayout";
@@ -19,15 +20,43 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 /** 已登录访问 `/` 时进后台，未登录进登录页 */
 function RootRedirect() {
-  const { user } = useAuth();
-  return <Navigate to={user ? "/users" : "/login"} replace />;
+  const { user, sessionReady } = useAuth();
+  if (!sessionReady) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+  return <Navigate to={user ? "/system/users" : "/login"} replace />;
 }
 
 /** 已登录时不允许留在登录/注册页 */
 function GuestOnly({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, sessionReady } = useAuth();
+  if (!sessionReady) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
   if (user) {
-    return <Navigate to="/users" replace />;
+    return <Navigate to="/system/users" replace />;
   }
   return <>{children}</>;
 }
@@ -55,9 +84,9 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
-          <Route path="/users" element={<UserPage />} />
-          <Route path="/roles" element={<RolePage />} />
-          <Route path="/resources" element={<ResourcePage />} />
+          <Route path="/system/users" element={<UserPage />} />
+          <Route path="/system/roles" element={<RolePage />} />
+          <Route path="/system/resources" element={<ResourcePage />} />
         </Route>
       </Route>
     </Routes>

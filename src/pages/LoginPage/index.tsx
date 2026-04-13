@@ -40,7 +40,7 @@ export const LoginPage = () => {
     setLoginError(null);
     try {
       await login(values.username, values.password);
-      navigate("/users", { replace: true });
+      navigate("/system/users", { replace: true });
     } catch (err) {
       setLoginError(loginErrorMessage(err));
     }

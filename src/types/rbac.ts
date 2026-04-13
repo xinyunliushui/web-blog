@@ -8,7 +8,7 @@ export interface Resource {
   code: string;
   /** 资源类型：菜单 / 页面 / 页面下的按钮 */
   type: ResourceType;
-  /** 路由路径，仅对菜单或页面类型资源有意义，例如 /users */
+  /** 路由路径，仅对菜单或页面类型资源有意义，例如 /system/users */
   path?: string;
   /** 父级资源 ID，用于形成层级关系（菜单 -> 页面 -> 按钮） */
   parentId?: string | null;
@@ -34,10 +34,16 @@ export interface User {
   id: string;
   /** 登录账号 */
   username: string;
-  /** 登录密码，仅用于前端 mock 示例 */
+  /** 登录密码，仅用于前端 mock / 新增用户 */
   password: string;
   /** 显示昵称 */
   nickname?: string;
+  /** 手机号 */
+  mobile?: string;
+  /** 头像 URL */
+  avatar?: string;
+  /** 个人简介 */
+  introduction?: string;
   status: UserStatus;
   /** 拥有的角色 ID 列表 */
   roleIds: string[];

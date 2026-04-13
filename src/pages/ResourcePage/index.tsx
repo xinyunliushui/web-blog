@@ -1,45 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Form,
   Input,
+  InputNumber,
   Modal,
   Select,
   Space,
   Table,
   Tag,
   message,
-} from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { rbacApiService } from '../../services/rbacApi';
-import type { Resource, ResourceType } from '../../types/rbac';
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import http from "../../services/http";
+import { API_PATHS } from "../../config/api";
 
 type ResourceFormValues = {
   name: string;
-  code: string;
-  type: ResourceType;
-  path?: string;
-  parentId?: string | null;
-  order?: number;
-  description?: string;
+  title: string;
+  icon?: string;
+  type: 1 | 2 | 3;
+  path: string;
+  redirect?: string;
+  parentId?: number;
+  sort?: number;
+  status?: 1 | 2;
+};
+
+type MenuItem = {
+  id: number;
+  name: string;
+  title: string;
+  icon?: string;
+  path: string;
+  redirect?: string;
+  sort: number;
+  status: 1 | 2;
+  type: 1 | 2 | 3;
+  parentId: number;
+  creator?: string;
+  children?: MenuItem[];
 };
 
 export const ResourcePage = () => {
   const [loading, setLoading] = useState(false);
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [editing, setEditing] = useState<Resource | null>(null);
+  const [resources, setResources] = useState<MenuItem[]>([]);
+  const [editing, setEditing] = useState<MenuItem | null>(null);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
   const [form] = Form.useForm<ResourceFormValues>();
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const list = await rbacApiService.listResources();
-      setResources(list);
+      const res = await http.get(API_PATHS.menuTree);
+      setResources((res.data?.data ?? []) as MenuItem[]);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error('加载资源数据失败');
+      message.error("加载资源数据失败");
     } finally {
       setLoading(false);
     }
@@ -53,36 +71,48 @@ export const ResourcePage = () => {
     setEditing(null);
     setResourceModalOpen(true);
     form.resetFields();
-    form.setFieldsValue({ type: 'menu' });
+    form.setFieldsValue({ type: 1, status: 1, sort: 999, parentId: 0 });
   };
 
-  const openEditModal = (record: Resource) => {
+  const openEditModal = (record: MenuItem) => {
     setEditing(record);
     setResourceModalOpen(true);
     form.setFieldsValue({
       name: record.name,
-      code: record.code,
+      title: record.title,
+      icon: record.icon ?? "",
       type: record.type,
       path: record.path,
-      parentId: record.parentId ?? undefined,
-      order: record.order,
-      description: record.description,
+      redirect: record.redirect ?? "",
+      parentId: record.parentId ?? 0,
+      sort: record.sort ?? 999,
+      status: record.status ?? 1,
     });
   };
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const payload: Omit<Resource, 'id'> = {
-        ...values,
-        parentId: values.parentId ?? null,
+      const payload = {
+        name: values.name.trim(),
+        title: values.title.trim(),
+        icon: values.icon?.trim() ?? "",
+        path: values.path.trim(),
+        redirect: values.redirect?.trim() ?? "",
+        sort: values.sort ?? 999,
+        status: editing ? (values.status ?? 1) : 1,
+        Type: values.type,
+        parentId: values.parentId ?? 0,
       };
       if (editing) {
-        await rbacApiService.updateResource(editing.id, payload);
-        message.success('更新资源成功');
+        await http.post(
+          `${API_PATHS.menuUpdate}/${encodeURIComponent(String(editing.id))}`,
+          payload
+        );
+        message.success("更新菜单成功");
       } else {
-        await rbacApiService.createResource(payload);
-        message.success('创建资源成功');
+        await http.post(API_PATHS.menuCreate, payload);
+        message.success("创建菜单成功");
       }
       setEditing(null);
       setResourceModalOpen(false);
@@ -91,76 +121,82 @@ export const ResourcePage = () => {
       if (err instanceof Error) {
         return;
       }
-      message.error('保存资源失败');
+      message.error("保存资源失败");
     }
   };
 
-  const handleDelete = async (record: Resource) => {
-    Modal.confirm({
-      title: '确认删除该资源及其子节点？',
-      content: `删除后将无法恢复：${record.name}`,
-      okText: '删除',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await rbacApiService.deleteResource(record.id);
-          message.success('删除资源成功');
-          await fetchData();
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          message.error('删除资源失败');
-        }
-      },
-    });
-  };
-
-  const typeTag = (type: ResourceType) => {
-    if (type === 'menu') return <Tag color="blue">菜单</Tag>;
-    if (type === 'page') return <Tag color="green">页面</Tag>;
+  const typeTag = (type: 1 | 2 | 3) => {
+    if (type === 1) return <Tag color="blue">菜单</Tag>;
+    if (type === 2) return <Tag color="green">页面</Tag>;
     return <Tag color="purple">按钮</Tag>;
   };
 
-  const columns: ColumnsType<Resource> = [
-    { title: '名称', dataIndex: 'name' },
-    { title: '编码', dataIndex: 'code' },
+  const columns: ColumnsType<MenuItem> = [
+    { title: "名称", dataIndex: "name" },
+    { title: "标题", dataIndex: "title" },
     {
-      title: '类型',
-      dataIndex: 'type',
-      render: (t: ResourceType) => typeTag(t),
+      title: "类型",
+      dataIndex: "type",
+      render: (t: 1 | 2 | 3) => typeTag(t),
     },
     {
-      title: '路由路径',
-      dataIndex: 'path',
-      render: (value?: string) => value || '-',
+      title: "路由路径",
+      dataIndex: "path",
+      render: (value?: string) => value || "-",
     },
     {
-      title: '父级资源',
-      dataIndex: 'parentId',
-      render: (parentId?: string | null) => {
-        if (!parentId) return '-';
-        const parent = resources.find((r) => r.id === parentId);
-        return parent ? parent.name : parentId;
+      title: "父级资源",
+      dataIndex: "parentId",
+      render: (parentId?: number) => {
+        if (!parentId) return "根节点";
+        return parentTitleMap.get(parentId) ?? parentId;
       },
     },
-    { title: '排序', dataIndex: 'order' },
+    { title: "排序", dataIndex: "sort" },
     {
-      title: '操作',
+      title: "状态",
+      dataIndex: "status",
+      render: (s: 1 | 2) =>
+        s === 1 ? (
+          <Tag color="success">正常</Tag>
+        ) : (
+          <Tag color="error">禁用</Tag>
+        ),
+    },
+    {
+      title: "操作",
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => openEditModal(record)}>
             编辑
-          </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
-            删除
           </Button>
         </Space>
       ),
     },
   ];
 
-  const parentOptions = resources.map((res) => ({
-    label: `${res.name} (${res.type})`,
+  const flatResources = useMemo(() => {
+    const list: MenuItem[] = [];
+    const walk = (nodes: MenuItem[]) => {
+      nodes.forEach((node) => {
+        list.push(node);
+        if (node.children?.length) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(resources);
+    return list;
+  }, [resources]);
+
+  const parentTitleMap = useMemo(() => {
+    const m = new Map<number, string>();
+    flatResources.forEach((item) => m.set(item.id, item.title));
+    return m;
+  }, [flatResources]);
+
+  const parentOptions = flatResources.map((res) => ({
+    label: `${res.title} (${res.path || "-"})`,
     value: res.id,
   }));
 
@@ -172,16 +208,17 @@ export const ResourcePage = () => {
         </Button>
         <Button onClick={fetchData}>刷新</Button>
       </Space>
-      <Table<Resource>
+      <Table<MenuItem>
         rowKey="id"
         loading={loading}
         columns={columns}
         dataSource={resources}
+        defaultExpandAllRows
       />
 
       <Modal
         open={resourceModalOpen}
-        title={editing ? '编辑资源' : '新增资源'}
+        title={editing ? "编辑菜单" : "新增菜单"}
         okText="确定"
         cancelText="取消"
         onCancel={() => {
@@ -193,45 +230,60 @@ export const ResourcePage = () => {
       >
         <Form<ResourceFormValues> form={form} layout="vertical">
           <Form.Item
-            label="资源名称"
+            label="资源名称(英文)"
             name="name"
-            rules={[{ required: true, message: '请输入资源名称' }]}
+            rules={[{ required: true, message: "请输入资源名称" }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
-            label="资源编码"
-            name="code"
-            rules={[{ required: true, message: '请输入资源编码' }]}
+            label="资源标题(中文)"
+            name="title"
+            rules={[{ required: true, message: "请输入标题" }]}
           >
-            <Input placeholder="例如 menu:user / button:user:create" />
+            <Input placeholder="例如 用户管理" />
+          </Form.Item>
+          <Form.Item label="图标" name="icon">
+            <Input placeholder="例如 UserOutlined" />
           </Form.Item>
           <Form.Item
             label="资源类型"
             name="type"
-            rules={[{ required: true, message: '请选择资源类型' }]}
+            rules={[{ required: true, message: "请选择资源类型" }]}
           >
-            <Select<ResourceType>>
-              <Select.Option value="menu">菜单</Select.Option>
-              <Select.Option value="page">页面</Select.Option>
-              <Select.Option value="button">按钮</Select.Option>
+            <Select<number>>
+              <Select.Option value={1}>菜单</Select.Option>
+              <Select.Option value={2}>页面</Select.Option>
+              <Select.Option value={3}>按钮</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item label="路由路径" name="path">
-            <Input placeholder="仅对菜单 / 页面生效，例如 /users" />
+          <Form.Item
+            label="路由路径"
+            name="path"
+            rules={[{ required: true, message: "请输入路由路径" }]}
+          >
+            <Input placeholder="例如 system / users / /system/users" />
+          </Form.Item>
+          <Form.Item label="重定向路径" name="redirect">
+            <Input placeholder="可选，例如 /system/users" />
           </Form.Item>
           <Form.Item label="父级资源" name="parentId">
             <Select
-              allowClear
-              options={parentOptions}
-              placeholder="可选，用于构建菜单-页面-按钮层级"
+              options={[{ label: "根节点", value: 0 }, ...parentOptions]}
+              placeholder="默认根节点"
             />
           </Form.Item>
-          <Form.Item label="排序号" name="order">
-            <Input type="number" placeholder="数字越小越靠前" />
+          <Form.Item label="排序号" name="sort">
+            <InputNumber min={1} max={999} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item label="描述" name="description">
-            <Input.TextArea rows={3} />
+          <Form.Item label="状态" name="status">
+            <Select
+              disabled={!editing}
+              options={[
+                { label: "正常", value: 1 },
+                { label: "禁用", value: 2 },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -240,4 +292,3 @@ export const ResourcePage = () => {
 };
 
 export default ResourcePage;
-

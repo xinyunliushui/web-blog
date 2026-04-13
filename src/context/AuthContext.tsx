@@ -7,20 +7,28 @@ import {
   useState,
 } from "react";
 import { message } from "antd";
-import { rbacMockService } from "../services/rbacMock";
 import { API_PATHS } from "../config/api";
 import http, { TOKEN_KEY } from "../services/http";
+import { rbacApiService } from "../services/rbacApi";
 import type { User } from "../types/rbac";
 
 interface AuthContextValue {
   user: User | null;
+  /** 登录 / 注册提交中 */
   loading: boolean;
+  /** 是否已完成首次 GET /user/info（或失败），避免未就绪时误判未登录 */
+  sessionReady: boolean;
+  /** 从服务端刷新当前用户 */
+  refreshUser: () => Promise<User | null>;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (payload: {
     username: string;
     password: string;
     nickname?: string;
+    mobile: string;
+    avatar?: string;
+    introduction?: string;
   }) => Promise<void>;
 }
 
@@ -31,54 +39,68 @@ const STORAGE_KEY = "rbac_demo_user";
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed: User = JSON.parse(stored);
-        setUser(parsed);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
-
-  const login = useCallback(async (username: string, password: string) => {
-    setLoading(true);
+  const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
-      const response = await http.post(
-        API_PATHS.authLogin,
-        { username, password },
-        { silent: true }
-      );
-      const token = response.data?.token || response.data?.data?.token || "";
-      const loggedIn: User = {
-        id: response.data?.data?.id || username,
-        username,
-        password,
-        nickname: response.data?.data?.nickname || username,
-        status: "enabled",
-        roleIds: response.data?.data?.roleIds || [],
-      };
-      if (token) {
-        window.localStorage.setItem(TOKEN_KEY, token);
-      }
-      setUser(loggedIn);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedIn));
-      message.success("登录成功");
-    } catch (err) {
-      throw err;
-    } finally {
-      setLoading(false);
+      const u = await rbacApiService.getCurrentUser();
+      setUser(u);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+      return u;
+    } catch {
+      setUser(null);
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
     }
   }, []);
+
+  // 应用启动：用 Cookie 中的 JWT 拉取 /user/info
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!cancelled) {
+          await refreshUser();
+        }
+      } finally {
+        if (!cancelled) {
+          setSessionReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshUser]);
+
+  const login = useCallback(
+    async (username: string, password: string) => {
+      setLoading(true);
+      try {
+        await http.post(
+          API_PATHS.authLogin,
+          { username, password },
+          { silent: true }
+        );
+        const u = await refreshUser();
+        if (!u) {
+          throw new Error("登录成功，但获取用户信息失败");
+        }
+        message.success("登录成功");
+      } catch (err) {
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refreshUser]
+  );
 
   const logout = useCallback(async () => {
     try {
       await http.post(API_PATHS.authLogout, {}, { silent: true });
     } catch {
-      /* 仍执行本地清理；网络异常或 token 已失效时不阻塞退出 */
+      /* 仍执行本地清理 */
     } finally {
       setUser(null);
       window.localStorage.removeItem(STORAGE_KEY);
@@ -91,20 +113,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       username: string;
       password: string;
       nickname?: string;
+      mobile: string;
+      avatar?: string;
+      introduction?: string;
     }) => {
       setLoading(true);
       try {
-        const newUser = await rbacMockService.createUser({
-          id: "",
+        await rbacApiService.createUser({
           username: payload.username,
           password: payload.password,
           nickname: payload.nickname,
+          mobile: payload.mobile,
+          avatar: payload.avatar,
+          introduction: payload.introduction,
           status: "enabled",
           roleIds: [],
-        } as any);
-        setUser(newUser);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-        message.success("注册成功，已自动登录");
+        });
+        message.success("注册成功，请登录");
       } catch (err) {
         message.error("注册失败");
         throw err;
@@ -116,7 +141,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        sessionReady,
+        refreshUser,
+        login,
+        logout,
+        register,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

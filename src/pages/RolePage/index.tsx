@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Form, Input, Modal, Space, Table, Tree, message } from "antd";
+import {
+  Button,
+  Form,
+  Input,
+  Modal,
+  Space,
+  Table,
+  TreeSelect,
+  message,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { DataNode } from "antd/es/tree";
 import { rbacApiService } from "../../services/rbacApi";
-import type { Role, Resource } from "../../types/rbac";
+import http from "../../services/http";
+import { API_PATHS } from "../../config/api";
+import type { Role } from "../../types/rbac";
 
 type RoleFormValues = {
   name: string;
@@ -12,6 +22,22 @@ type RoleFormValues = {
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+const { SHOW_PARENT } = TreeSelect;
+
+type MenuTreeNode = {
+  id: number;
+  title: string;
+  name: string;
+  type: number;
+  children?: MenuTreeNode[];
+};
+
+type TreeOption = {
+  title: string;
+  value: string;
+  key: string;
+  children?: TreeOption[];
+};
 
 export const RolePage = () => {
   const [loading, setLoading] = useState(false);
@@ -21,7 +47,7 @@ export const RolePage = () => {
     pageSize: DEFAULT_PAGE_SIZE,
     total: 0,
   });
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [menuTree, setMenuTree] = useState<MenuTreeNode[]>([]);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [form] = Form.useForm<RoleFormValues>();
@@ -32,10 +58,9 @@ export const RolePage = () => {
   const fetchData = async (page: number, pageSize: number) => {
     setLoading(true);
     try {
-      // const [roleRes, resourceList] = await Promise.all([
-      const [roleRes] = await Promise.all([
+      const [roleRes, menuTreeRes] = await Promise.all([
         rbacApiService.listRoles({ page, pageSize }),
-        // rbacApiService.listResources(),
+        http.get(API_PATHS.menuTree),
       ]);
       setRoles(roleRes.list);
       setPagination({
@@ -43,7 +68,7 @@ export const RolePage = () => {
         pageSize: roleRes.pageSize,
         total: roleRes.total,
       });
-      // setResources(resourceList);
+      setMenuTree((menuTreeRes.data?.data ?? []) as MenuTreeNode[]);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
@@ -117,32 +142,18 @@ export const RolePage = () => {
     });
   };
 
-  const treeData = useMemo<DataNode[]>(() => {
-    const map = new Map<string, DataNode>();
-    const roots: DataNode[] = [];
-
-    resources.forEach((res) => {
-      map.set(res.id, {
-        key: res.id,
-        title: `${res.name} (${res.code})`,
-        children: [],
-      });
-    });
-
-    resources.forEach((res) => {
-      const node = map.get(res.id);
-      if (!node) return;
-      if (res.parentId && map.has(res.parentId)) {
-        const parent = map.get(res.parentId)!;
-        if (!parent.children) parent.children = [];
-        parent.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-
-    return roots;
-  }, [resources]);
+  const treeData = useMemo<TreeOption[]>(() => {
+    const mapNode = (node: MenuTreeNode): TreeOption => {
+      const typeLabel = node.type === 1 ? "菜单" : node.type === 2 ? "页面" : "按钮";
+      return {
+        title: `${node.title || node.name} (${typeLabel})`,
+        value: String(node.id),
+        key: String(node.id),
+        children: node.children?.map(mapNode),
+      };
+    };
+    return menuTree.map(mapNode);
+  }, [menuTree]);
 
   const handleOpenResourceModal = (role: Role) => {
     setResourceModalRole(role);
@@ -269,14 +280,16 @@ export const RolePage = () => {
         width={640}
         destroyOnClose
       >
-        <Tree
-          checkable
-          selectable={false}
+        <TreeSelect
+          style={{ width: "100%" }}
           treeData={treeData}
-          checkedKeys={checkedResourceIds}
-          onCheck={(checked) => {
-            setCheckedResourceIds(checked as string[]);
-          }}
+          value={checkedResourceIds}
+          treeCheckable
+          showCheckedStrategy={SHOW_PARENT}
+          placeholder="请选择菜单资源"
+          allowClear
+          treeDefaultExpandAll
+          onChange={(values) => setCheckedResourceIds(values as string[])}
         />
       </Modal>
     </>
