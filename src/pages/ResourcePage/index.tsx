@@ -14,6 +14,10 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import http from "../../services/http";
 import { API_PATHS } from "../../config/api";
+import {
+  getRequestErrorMessage,
+  isFormValidationError,
+} from "../../utils/requestError";
 
 type ResourceFormValues = {
   name: string;
@@ -43,8 +47,10 @@ type MenuItem = {
 };
 
 export const ResourcePage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
   const [resources, setResources] = useState<MenuItem[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
   const [form] = Form.useForm<ResourceFormValues>();
@@ -57,7 +63,7 @@ export const ResourcePage = () => {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error("加载资源数据失败");
+      messageApi.error(getRequestErrorMessage(err, "加载资源数据失败"));
     } finally {
       setLoading(false);
     }
@@ -66,6 +72,20 @@ export const ResourcePage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const keys: React.Key[] = [];
+    const walk = (nodes: MenuItem[]) => {
+      nodes.forEach((node) => {
+        keys.push(node.id);
+        if (node.children?.length) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(resources);
+    setExpandedRowKeys(keys);
+  }, [resources]);
 
   const openCreateModal = () => {
     setEditing(null);
@@ -100,7 +120,7 @@ export const ResourcePage = () => {
         path: values.path.trim(),
         redirect: values.redirect?.trim() ?? "",
         sort: values.sort ?? 999,
-        status: editing ? (values.status ?? 1) : 1,
+        status: editing ? values.status ?? 1 : 1,
         Type: values.type,
         parentId: values.parentId ?? 0,
       };
@@ -109,19 +129,19 @@ export const ResourcePage = () => {
           `${API_PATHS.menuUpdate}/${encodeURIComponent(String(editing.id))}`,
           payload
         );
-        message.success("更新菜单成功");
+        messageApi.success("资源编辑成功");
       } else {
         await http.post(API_PATHS.menuCreate, payload);
-        message.success("创建菜单成功");
+        messageApi.success("资源新增成功");
       }
       setEditing(null);
       setResourceModalOpen(false);
       await fetchData();
     } catch (err) {
-      if (err instanceof Error) {
+      if (isFormValidationError(err)) {
         return;
       }
-      message.error("保存资源失败");
+      messageApi.error(getRequestErrorMessage(err, "保存资源失败"));
     }
   };
 
@@ -202,6 +222,7 @@ export const ResourcePage = () => {
 
   return (
     <>
+      {contextHolder}
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" onClick={openCreateModal}>
           新增资源
@@ -213,7 +234,8 @@ export const ResourcePage = () => {
         loading={loading}
         columns={columns}
         dataSource={resources}
-        defaultExpandAllRows
+        expandedRowKeys={expandedRowKeys}
+        onExpandedRowsChange={(keys) => setExpandedRowKeys(keys)}
       />
 
       <Modal

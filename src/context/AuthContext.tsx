@@ -19,7 +19,7 @@ interface AuthContextValue {
   /** 是否已完成首次 GET /user/info（或失败），避免未就绪时误判未登录 */
   sessionReady: boolean;
   /** 从服务端刷新当前用户 */
-  refreshUser: () => Promise<User | null>;
+  refreshUser: (options?: { throwOnError?: boolean }) => Promise<User | null>;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (payload: {
@@ -36,23 +36,45 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "rbac_demo_user";
 
+const getBackendErrorMessage = (err: unknown): string => {
+  if (!err || typeof err !== "object") return "";
+  const e = err as {
+    response?: {
+      data?: {
+        message?: unknown;
+        msg?: unknown;
+      };
+    };
+    message?: unknown;
+  };
+  const backendMessage =
+    e.response?.data?.message ?? e.response?.data?.msg ?? e.message;
+  return typeof backendMessage === "string" ? backendMessage : "";
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
-  const refreshUser = useCallback(async (): Promise<User | null> => {
-    try {
-      const u = await rbacApiService.getCurrentUser();
-      setUser(u);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-      return u;
-    } catch {
-      setUser(null);
-      window.localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-  }, []);
+  const refreshUser = useCallback(
+    async (options?: { throwOnError?: boolean }): Promise<User | null> => {
+      try {
+        const u = await rbacApiService.getCurrentUser();
+        setUser(u);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+        return u;
+      } catch (err) {
+        setUser(null);
+        window.localStorage.removeItem(STORAGE_KEY);
+        if (options?.throwOnError) {
+          throw err;
+        }
+        return null;
+      }
+    },
+    []
+  );
 
   // 应用启动：用 Cookie 中的 JWT 拉取 /user/info
   useEffect(() => {
@@ -82,12 +104,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           { username, password },
           { silent: true }
         );
-        const u = await refreshUser();
+        const u = await refreshUser({ throwOnError: true });
         if (!u) {
-          throw new Error("登录成功，但获取用户信息失败");
+          throw new Error("登录成功，但获取用户信息失败，请稍后重试");
         }
         message.success("登录成功");
       } catch (err) {
+        if (err instanceof Error) {
+          const backendMessage = getBackendErrorMessage(err);
+          err.message = backendMessage || err.message || "登录失败，请稍后重试";
+        }
         throw err;
       } finally {
         setLoading(false);

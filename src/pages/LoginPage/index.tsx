@@ -8,22 +8,13 @@
 
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Form, Input, Typography } from "antd";
-import { AxiosError } from "axios";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getRequestErrorMessage } from "../../utils/requestError";
 
 function loginErrorMessage(err: unknown): string {
-  if (err instanceof AxiosError) {
-    const data = err.response?.data as
-      | { message?: string; msg?: string }
-      | undefined;
-    return data?.message || data?.msg || err.message || "登录失败";
-  }
-  if (err instanceof Error) {
-    return err.message;
-  }
-  return "登录失败";
+  return getRequestErrorMessage(err, "登录失败");
 }
 
 type LoginFormValues = {

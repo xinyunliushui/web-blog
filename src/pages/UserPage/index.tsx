@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Button,
+  Checkbox,
   Form,
   Input,
   Modal,
@@ -9,6 +10,7 @@ import {
   Table,
   Tag,
   Tooltip,
+  Typography,
   message,
   Image as AntdImage,
 } from "antd";
@@ -16,6 +18,10 @@ import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "../../context/AuthContext";
 import { rbacApiService } from "../../services/rbacApi";
 import type { User, Role, UserStatus } from "../../types/rbac";
+import {
+  getRequestErrorMessage,
+  isFormValidationError,
+} from "../../utils/requestError";
 
 type UserFormValues = {
   username: string;
@@ -30,6 +36,7 @@ type UserFormValues = {
 const DEFAULT_PAGE_SIZE = 10;
 
 export const UserPage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -41,6 +48,7 @@ export const UserPage = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userModalOpen, setUserModalOpen] = useState(false);
+  const [usernameEditConfirmed, setUsernameEditConfirmed] = useState(false);
   const [roleModalUser, setRoleModalUser] = useState<User | null>(null);
   const [roleModalRoleIds, setRoleModalRoleIds] = useState<string[]>([]);
   const [form] = Form.useForm<UserFormValues>();
@@ -63,19 +71,20 @@ export const UserPage = () => {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error("加载用户数据失败");
+      messageApi.error(getRequestErrorMessage(err, "加载用户数据失败"));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    void fetchData(1, DEFAULT_PAGE_SIZE);
+    fetchData(1, DEFAULT_PAGE_SIZE);
   }, []);
 
   const openEditModal = (record: User) => {
     setEditingUser(record);
     setUserModalOpen(true);
+    setUsernameEditConfirmed(false);
     form.setFieldsValue({
       username: record.username,
       nickname: record.nickname,
@@ -102,36 +111,46 @@ export const UserPage = () => {
         avatar: values.avatar,
         introduction: values.introduction,
         status: values.status,
+        roleIds: (editingUser.roleIds ?? []).map((id) => String(id)),
       });
-      message.success("更新用户成功");
+      messageApi.success("用户编辑成功");
       setEditingUser(null);
       setUserModalOpen(false);
+      setUsernameEditConfirmed(false);
       await fetchData(pagination.current, pagination.pageSize);
     } catch (err) {
-      if (err instanceof Error) {
-        // 表单校验错误直接返回
+      if (isFormValidationError(err)) {
         return;
       }
-      message.error("保存用户失败");
+      messageApi.error(getRequestErrorMessage(err, "保存用户失败"));
     }
   };
 
   const handleOpenRoleModal = (record: User) => {
     setRoleModalUser(record);
-    setRoleModalRoleIds(record.roleIds);
+    setRoleModalRoleIds((record.roleIds ?? []).map((id) => String(id)));
   };
 
   const handleSaveUserRoles = async () => {
     if (!roleModalUser) return;
+    if (!roleModalRoleIds.length) {
+      messageApi.warning("请至少选择一个角色");
+      return;
+    }
     try {
-      await rbacApiService.updateUserRoles(roleModalUser.id, roleModalRoleIds);
-      message.success("更新用户角色成功");
+      await rbacApiService.updateUserRoles(
+        roleModalUser.id,
+        roleModalRoleIds,
+        roleModalUser
+      );
       setRoleModalUser(null);
+      setRoleModalRoleIds([]);
       await fetchData(pagination.current, pagination.pageSize);
+      messageApi.success("用户分配角色成功");
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error("更新用户角色失败");
+      messageApi.error(getRequestErrorMessage(err, "更新用户角色失败"));
     }
   };
 
@@ -225,6 +244,7 @@ export const UserPage = () => {
 
   return (
     <>
+      {contextHolder}
       <Space style={{ marginBottom: 16 }}>
         <Button
           onClick={() => fetchData(pagination.current, pagination.pageSize)}
@@ -257,6 +277,7 @@ export const UserPage = () => {
         onCancel={() => {
           setUserModalOpen(false);
           setEditingUser(null);
+          setUsernameEditConfirmed(false);
         }}
         onOk={handleSubmit}
         destroyOnClose
@@ -266,8 +287,24 @@ export const UserPage = () => {
             label="用户名"
             name="username"
             rules={[{ required: true, message: "请输入用户名" }]}
+            extra={
+              <Typography.Text type="danger">
+                请谨慎修改，用户名变更会影响该用户登录。
+              </Typography.Text>
+            }
           >
-            <Input placeholder="用于登录的账号名" />
+            <Input
+              placeholder="用于登录的账号名"
+              disabled={!usernameEditConfirmed}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Checkbox
+              checked={usernameEditConfirmed}
+              onChange={(e) => setUsernameEditConfirmed(e.target.checked)}
+            >
+              我已知情并确认：修改用户名会影响该用户登录
+            </Checkbox>
           </Form.Item>
           <Form.Item label="昵称" name="nickname">
             <Input placeholder="显示使用的昵称" />
@@ -322,7 +359,10 @@ export const UserPage = () => {
         }
         okText="确定"
         cancelText="取消"
-        onCancel={() => setRoleModalUser(null)}
+        onCancel={() => {
+          setRoleModalUser(null);
+          setRoleModalRoleIds([]);
+        }}
         onOk={handleSaveUserRoles}
         destroyOnClose
       >

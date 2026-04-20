@@ -14,6 +14,10 @@ import { rbacApiService } from "../../services/rbacApi";
 import http from "../../services/http";
 import { API_PATHS } from "../../config/api";
 import type { Role } from "../../types/rbac";
+import {
+  getRequestErrorMessage,
+  isFormValidationError,
+} from "../../utils/requestError";
 
 type RoleFormValues = {
   name: string;
@@ -40,6 +44,7 @@ type TreeOption = {
 };
 
 export const RolePage = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [pagination, setPagination] = useState({
@@ -72,7 +77,7 @@ export const RolePage = () => {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error("加载角色数据失败");
+      messageApi.error(getRequestErrorMessage(err, "加载角色数据失败"));
     } finally {
       setLoading(false);
     }
@@ -103,22 +108,22 @@ export const RolePage = () => {
       const values = await form.validateFields();
       if (editingRole) {
         await rbacApiService.updateRole(editingRole.id, values);
-        message.success("更新角色成功");
+        messageApi.success("角色编辑成功");
       } else {
         await rbacApiService.createRole({
           ...values,
           resourceIds: [],
         });
-        message.success("创建角色成功");
+        messageApi.success("角色新增成功");
       }
       setEditingRole(null);
       setRoleModalOpen(false);
       await fetchData(pagination.current, pagination.pageSize);
     } catch (err) {
-      if (err instanceof Error) {
+      if (isFormValidationError(err)) {
         return;
       }
-      message.error("保存角色失败");
+      messageApi.error(getRequestErrorMessage(err, "保存角色失败"));
     }
   };
 
@@ -131,12 +136,12 @@ export const RolePage = () => {
       onOk: async () => {
         try {
           await rbacApiService.deleteRole(record.id);
-          message.success("删除角色成功");
+          messageApi.success("角色删除成功");
           await fetchData(pagination.current, pagination.pageSize);
         } catch (err) {
           // eslint-disable-next-line no-console
           console.error(err);
-          message.error("删除角色失败");
+          messageApi.error(getRequestErrorMessage(err, "删除角色失败"));
         }
       },
     });
@@ -144,7 +149,8 @@ export const RolePage = () => {
 
   const treeData = useMemo<TreeOption[]>(() => {
     const mapNode = (node: MenuTreeNode): TreeOption => {
-      const typeLabel = node.type === 1 ? "菜单" : node.type === 2 ? "页面" : "按钮";
+      const typeLabel =
+        node.type === 1 ? "菜单" : node.type === 2 ? "页面" : "按钮";
       return {
         title: `${node.title || node.name} (${typeLabel})`,
         value: String(node.id),
@@ -167,13 +173,13 @@ export const RolePage = () => {
         resourceModalRole.id,
         checkedResourceIds
       );
-      message.success("更新角色资源成功");
+      messageApi.success("角色分配资源成功");
       setResourceModalRole(null);
       await fetchData(pagination.current, pagination.pageSize);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      message.error("更新角色资源失败");
+      messageApi.error(getRequestErrorMessage(err, "更新角色资源失败"));
     }
   };
 
@@ -206,6 +212,7 @@ export const RolePage = () => {
 
   return (
     <>
+      {contextHolder}
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" onClick={openCreateModal}>
           新增角色

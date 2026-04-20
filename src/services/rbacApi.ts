@@ -37,6 +37,13 @@ function toApiUserStatus(s: UserStatus): number {
   return s === "enabled" ? 1 : 2;
 }
 
+function toApiRoleIds(roleIds: string[] | undefined): number[] | undefined {
+  if (!roleIds) return undefined;
+  return roleIds
+    .map((rid) => Number(rid))
+    .filter((rid) => Number.isFinite(rid) && rid > 0);
+}
+
 function normalizeUser(raw: UnknownRecord): User {
   const rolesRaw = raw.roles as unknown;
   let roleIds: string[] = [];
@@ -319,6 +326,10 @@ export const rbacApiService = {
     if (payload.avatar !== undefined) body.avatar = payload.avatar;
     if (payload.introduction !== undefined)
       body.introduction = payload.introduction;
+    if (payload.status !== undefined)
+      body.status = toApiUserStatus(payload.status);
+    const roleIds = toApiRoleIds(payload.roleIds);
+    if (roleIds !== undefined) body.roleIds = roleIds;
     const res = await http.post(API_PATHS.userCreate, body);
     const data = unwrapPayload(res.data);
     return normalizeUser((data ?? {}) as UnknownRecord);
@@ -338,10 +349,11 @@ export const rbacApiService = {
     if (payload.status !== undefined)
       body.status = toApiUserStatus(payload.status);
     if (payload.password) body.password = payload.password;
-    if (payload.roleIds !== undefined) body.roleIds = payload.roleIds;
+    const roleIds = toApiRoleIds(payload.roleIds);
+    if (roleIds !== undefined) body.roleIds = roleIds;
 
-    const res = await http.patch(
-      `${API_PATHS.users}/${encodeURIComponent(id)}`,
+    const res = await http.post(
+      `${API_PATHS.userUpdate}/${encodeURIComponent(id)}`,
       body
     );
     const data = unwrapPayload(res.data);
@@ -352,10 +364,28 @@ export const rbacApiService = {
     await http.delete(`${API_PATHS.users}/${encodeURIComponent(id)}`);
   },
 
-  async updateUserRoles(id: string, roleIds: string[]): Promise<User> {
-    const res = await http.patch(
-      `${API_PATHS.users}/${encodeURIComponent(id)}/roles`,
-      { roleIds }
+  async updateUserRoles(
+    id: string,
+    roleIds: string[],
+    currentUser: User
+  ): Promise<User> {
+    const normalizedRoleIds = roleIds
+      .map((rid) => Number(rid))
+      .filter((rid) => Number.isFinite(rid) && rid > 0);
+
+    const body: UnknownRecord = {
+      username: currentUser.username,
+      mobile: currentUser.mobile ?? "",
+      avatar: currentUser.avatar,
+      nickname: currentUser.nickname,
+      introduction: currentUser.introduction,
+      status: toApiUserStatus(currentUser.status),
+      roleIds: normalizedRoleIds,
+    };
+
+    const res = await http.post(
+      `${API_PATHS.userUpdate}/${encodeURIComponent(id)}`,
+      body
     );
     const data = unwrapPayload(res.data);
     return normalizeUser((data ?? {}) as UnknownRecord);

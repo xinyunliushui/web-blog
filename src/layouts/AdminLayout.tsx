@@ -125,11 +125,7 @@ export const AdminLayout = () => {
                 gap: 8,
               }}
             >
-              <Avatar
-                size="small"
-                src={user?.avatar}
-                icon={<UserOutlined />}
-              />
+              <Avatar size="small" src={user?.avatar} icon={<UserOutlined />} />
               <span>{user?.nickname || user?.username || "未登录"}</span>
             </span>
           </Dropdown>
