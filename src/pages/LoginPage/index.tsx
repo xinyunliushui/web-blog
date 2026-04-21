@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getRequestErrorMessage } from "../../utils/requestError";
+import { encryptPassword } from "../../utils/rsa";
 
 function loginErrorMessage(err: unknown): string {
   return getRequestErrorMessage(err, "登录失败");
@@ -30,7 +31,7 @@ export const LoginPage = () => {
   const handleFinish = async (values: LoginFormValues) => {
     setLoginError(null);
     try {
-      await login(values.username, values.password);
+      await login(values.username, encryptPassword(values.password));
       navigate("/system/users", { replace: true });
     } catch (err) {
       setLoginError(loginErrorMessage(err));

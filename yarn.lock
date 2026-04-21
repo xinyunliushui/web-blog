@@ -6362,6 +6362,11 @@ jsdom@^16.6.0:
     ws "^7.4.6"
     xml-name-validator "^3.0.0"
 
+jsencrypt@^3.5.4:
+  version "3.5.4"
+  resolved "http://10.71.4.5:8081/repository/npm/jsencrypt/-/jsencrypt-3.5.4.tgz#8db335ab164359449dd200d120f125f459476b25"
+  integrity sha512-kNjfYEMNASxrDGsmcSQh/rUTmcoRfSUkxnAz+MMywM8jtGu+fFEZ3nJjHM58zscVnwR0fYmG9sGkTDjqUdpiwA==
+
 jsesc@^3.0.2, jsesc@~3.1.0:
   version "3.1.0"
   resolved "https://registry.npmmirror.com/jsesc/-/jsesc-3.1.0.tgz#74d335a234f67ed19907fdadfac7ccf9d409825d"

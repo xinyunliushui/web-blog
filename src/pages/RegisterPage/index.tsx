@@ -2,13 +2,15 @@
  * @Date: 2026-03-31 09:49:55
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-03-31 10:07:49
+ * @LastEditTime: 2026-04-21 17:15:46
  * @Description
  */
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, Typography } from "antd";
+import { Button, Card, Form, Input, Modal, Typography } from "antd";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { encryptPassword } from "../../utils/rsa";
 
 type RegisterFormValues = {
   username: string;
@@ -23,6 +25,21 @@ type RegisterFormValues = {
 export const RegisterPage = () => {
   const { user, loading, register } = useAuth();
   const navigate = useNavigate();
+  const [redirectSeconds, setRedirectSeconds] = useState(0);
+
+  useEffect(() => {
+    if (redirectSeconds <= 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (redirectSeconds <= 1) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      setRedirectSeconds((prev) => prev - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [navigate, redirectSeconds]);
 
   const handleFinish = async (values: RegisterFormValues) => {
     if (values.password !== values.confirmPassword) {
@@ -31,13 +48,13 @@ export const RegisterPage = () => {
     try {
       await register({
         username: values.username,
-        password: values.password,
+        password: encryptPassword(values.password),
         nickname: values.nickname,
         mobile: values.mobile,
         avatar: values.avatar,
         introduction: values.introduction,
       });
-      navigate("/login", { replace: true });
+      setRedirectSeconds(3);
     } catch {
       // 错误提示在 register 内部处理
     }
@@ -82,7 +99,11 @@ export const RegisterPage = () => {
               },
             ]}
           >
-            <Input placeholder="手机号（可选，11位）" maxLength={11} allowClear />
+            <Input
+              placeholder="手机号（可选，11位）"
+              maxLength={11}
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="avatar">
             <Input placeholder="头像 URL（可选）" allowClear />
@@ -119,11 +140,30 @@ export const RegisterPage = () => {
             <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+              disabled={redirectSeconds > 0}
+            >
               注册
             </Button>
           </Form.Item>
         </Form>
+        <Modal
+          title="注册成功"
+          open={redirectSeconds > 0}
+          maskClosable={false}
+          closable={false}
+          cancelButtonProps={{ style: { display: "none" } }}
+          okText="立即去登录"
+          onOk={() => navigate("/login", { replace: true })}
+        >
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {redirectSeconds} 秒后自动跳转到登录页
+          </Typography.Paragraph>
+        </Modal>
         <Typography.Paragraph style={{ marginTop: 8, fontSize: 12 }}>
           已有账号？<Link to="/login">去登录</Link>
         </Typography.Paragraph>
