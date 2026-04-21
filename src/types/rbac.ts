@@ -23,6 +23,10 @@ export interface Role {
   name: string;
   /** 角色编码，建议与后端保持一致，例如 admin、editor */
   code: string;
+  /** 角色状态：1 启用，2 禁用 */
+  status?: number;
+  /** 角色排序 */
+  sort?: number;
   description?: string;
   /** 拥有的资源 ID 列表 */
   resourceIds: string[];

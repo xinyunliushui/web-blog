@@ -10,6 +10,7 @@ import { message } from "antd";
 import { API_PATHS } from "../config/api";
 import http, { TOKEN_KEY } from "../services/http";
 import { rbacApiService } from "../services/rbacApi";
+import type { AccessMenuNode } from "../types/menu";
 import type { User } from "../types/rbac";
 
 interface AuthContextValue {
@@ -20,6 +21,10 @@ interface AuthContextValue {
   sessionReady: boolean;
   /** 从服务端刷新当前用户 */
   refreshUser: (options?: { throwOnError?: boolean }) => Promise<User | null>;
+  accessMenuTree: AccessMenuNode[];
+  accessMenuLoading: boolean;
+  accessMenuPaths: string[];
+  refreshAccessMenus: (userId?: string) => Promise<AccessMenuNode[]>;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (payload: {
@@ -56,6 +61,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [accessMenuTree, setAccessMenuTree] = useState<AccessMenuNode[]>([]);
+  const [accessMenuLoading, setAccessMenuLoading] = useState(false);
+
+  const collectLeafPaths = useCallback((tree: AccessMenuNode[]): string[] => {
+    const join = (parent: string, segment: string): string => {
+      const s = (segment || "").trim();
+      if (!s) return parent || "/";
+      if (s.startsWith("/")) return "/" + s.replace(/^\/+/g, "").replace(/\/+$/g, "");
+      const p = (parent || "").replace(/\/+$/g, "");
+      const n = s.replace(/^\/+/g, "").replace(/\/+$/g, "");
+      return (p ? `${p}/${n}` : `/${n}`).replace(/\/+/g, "/");
+    };
+    const paths: string[] = [];
+    const walk = (nodes: AccessMenuNode[], parent: string) => {
+      for (const node of nodes || []) {
+        if (node.status !== 1 || node.hidden === 1) continue;
+        const fullPath = join(parent, node.path);
+        const children = (node.children || []).filter(
+          (child) => child.status === 1 && child.hidden !== 1
+        );
+        if (children.length > 0) {
+          walk(children, fullPath);
+          continue;
+        }
+        const redirect = (node.redirect || "").trim();
+        if (redirect) {
+          paths.push(join(redirect.startsWith("/") ? "" : parent, redirect));
+        } else {
+          paths.push(fullPath);
+        }
+      }
+    };
+    walk(tree, "");
+    return Array.from(new Set(paths.filter(Boolean)));
+  }, []);
+
+  const refreshAccessMenus = useCallback(async (userId?: string) => {
+    const uid = (userId || "").trim();
+    if (!uid) {
+      setAccessMenuTree([]);
+      return [];
+    }
+    setAccessMenuLoading(true);
+    try {
+      const tree = await rbacApiService.getMenuAccessTree(uid);
+      setAccessMenuTree(tree);
+      return tree;
+    } catch (err) {
+      setAccessMenuTree([]);
+      throw err;
+    } finally {
+      setAccessMenuLoading(false);
+    }
+  }, []);
 
   const refreshUser = useCallback(
     async (options?: { throwOnError?: boolean }): Promise<User | null> => {
@@ -63,9 +122,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const u = await rbacApiService.getCurrentUser();
         setUser(u);
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+        await refreshAccessMenus(String(u.id ?? ""));
         return u;
       } catch (err) {
         setUser(null);
+        setAccessMenuTree([]);
         window.localStorage.removeItem(STORAGE_KEY);
         if (options?.throwOnError) {
           throw err;
@@ -73,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
     },
-    []
+    [refreshAccessMenus]
   );
 
   // 应用启动：用 Cookie 中的 JWT 拉取 /user/info
@@ -129,6 +190,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       /* 仍执行本地清理 */
     } finally {
       setUser(null);
+      setAccessMenuTree([]);
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem(TOKEN_KEY);
     }
@@ -173,6 +235,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         sessionReady,
         refreshUser,
+        accessMenuTree,
+        accessMenuLoading,
+        accessMenuPaths: collectLeafPaths(accessMenuTree),
+        refreshAccessMenus,
         login,
         logout,
         register,

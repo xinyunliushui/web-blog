@@ -17,10 +17,12 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AuthorizedRoute from "./components/AuthorizedRoute";
+import NoAccessPage from "./pages/NoAccessPage";
 
 /** 已登录访问 `/` 时进后台，未登录进登录页 */
 function RootRedirect() {
-  const { user, sessionReady } = useAuth();
+  const { user, sessionReady, accessMenuLoading, accessMenuPaths } = useAuth();
   if (!sessionReady) {
     return (
       <div
@@ -35,13 +37,47 @@ function RootRedirect() {
       </div>
     );
   }
-  return <Navigate to={user ? "/system/users" : "/login"} replace />;
+  if (accessMenuLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (accessMenuPaths.length === 0) {
+    return <Navigate to="/no-access" replace />;
+  }
+  return <Navigate to={accessMenuPaths[0]} replace />;
 }
 
 /** 已登录时不允许留在登录/注册页 */
 function GuestOnly({ children }: { children: ReactNode }) {
-  const { user, sessionReady } = useAuth();
+  const { user, sessionReady, accessMenuLoading, accessMenuPaths } = useAuth();
   if (!sessionReady) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+  if (accessMenuLoading) {
     return (
       <div
         style={{
@@ -56,7 +92,7 @@ function GuestOnly({ children }: { children: ReactNode }) {
     );
   }
   if (user) {
-    return <Navigate to="/system/users" replace />;
+    return <Navigate to={accessMenuPaths[0] || "/no-access"} replace />;
   }
   return <>{children}</>;
 }
@@ -84,9 +120,12 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
-          <Route path="/system/users" element={<UserPage />} />
-          <Route path="/system/roles" element={<RolePage />} />
-          <Route path="/system/resources" element={<ResourcePage />} />
+          <Route path="/no-access" element={<NoAccessPage />} />
+          <Route element={<AuthorizedRoute />}>
+            <Route path="/system/users" element={<UserPage />} />
+            <Route path="/system/roles" element={<RolePage />} />
+            <Route path="/system/resources" element={<ResourcePage />} />
+          </Route>
         </Route>
       </Route>
     </Routes>

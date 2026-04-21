@@ -222,8 +222,14 @@ export const rbacMockService = {
     }));
   },
 
-  async updateRoleResources(id: string, resourceIds: string[]): Promise<Role> {
-    return this.updateRole(id, { resourceIds });
+  async getRoleMenus(id: string): Promise<string[]> {
+    await delay();
+    const r = roles.find((x) => x.id === id);
+    return r?.resourceIds ?? [];
+  },
+
+  async updateRoleMenus(id: string, menuIds: number[]): Promise<void> {
+    await this.updateRole(id, { resourceIds: menuIds.map(String) });
   },
 
   // 资源相关

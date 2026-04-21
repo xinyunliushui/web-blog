@@ -136,6 +136,8 @@ function normalizeRole(raw: UnknownRecord): Role {
     id: toIdStr(raw.id ?? raw.ID),
     name: String(raw.name ?? ""),
     code: String(raw.code ?? raw.keyword ?? raw.name ?? ""),
+    status: raw.status != null ? Number(raw.status) : undefined,
+    sort: raw.sort != null ? Number(raw.sort) : undefined,
     description:
       raw.description != null
         ? String(raw.description)
@@ -231,6 +233,22 @@ export type ListRolesResult = {
   total: number;
   page: number;
   pageSize: number;
+};
+
+export type CreateRolePayload = {
+  name: string;
+  keyword: string;
+  desc?: string;
+  status: number;
+  sort: number;
+};
+
+export type UpdateRolePayload = {
+  name: string;
+  keyword: string;
+  desc?: string;
+  status: number;
+  sort: number;
 };
 
 /**
@@ -411,39 +429,29 @@ export const rbacApiService = {
     });
   },
 
-  async createRole(payload: Omit<Role, "id">): Promise<Role> {
+  async createRole(payload: CreateRolePayload): Promise<Role> {
     const body = {
       name: payload.name,
-      code: payload.code,
-      keyword: payload.code,
-      description: payload.description,
-      desc: payload.description,
-      resourceIds: payload.resourceIds,
+      keyword: payload.keyword,
+      desc: payload.desc,
+      status: payload.status,
+      sort: payload.sort,
     };
-    const res = await http.post(API_PATHS.roles, body);
+    const res = await http.post(API_PATHS.roleCreate, body);
     const data = unwrapPayload(res.data);
     return normalizeRole((data ?? {}) as UnknownRecord);
   },
 
-  async updateRole(
-    id: string,
-    payload: Partial<Omit<Role, "id">>
-  ): Promise<Role> {
-    const body: UnknownRecord = {};
-    if (payload.name !== undefined) body.name = payload.name;
-    if (payload.code !== undefined) {
-      body.code = payload.code;
-      body.keyword = payload.code;
-    }
-    if (payload.description !== undefined) {
-      body.description = payload.description;
-      body.desc = payload.description;
-    }
-    if (payload.resourceIds !== undefined)
-      body.resourceIds = payload.resourceIds;
-
-    const res = await http.patch(
-      `${API_PATHS.roles}/${encodeURIComponent(id)}`,
+  async updateRole(id: string, payload: UpdateRolePayload): Promise<Role> {
+    const body = {
+      name: payload.name,
+      keyword: payload.keyword,
+      desc: payload.desc,
+      status: payload.status,
+      sort: payload.sort,
+    };
+    const res = await http.post(
+      `${API_PATHS.roles}/update/${encodeURIComponent(id)}`,
       body
     );
     const data = unwrapPayload(res.data);
@@ -454,13 +462,25 @@ export const rbacApiService = {
     await http.delete(`${API_PATHS.roles}/${encodeURIComponent(id)}`);
   },
 
-  async updateRoleResources(id: string, resourceIds: string[]): Promise<Role> {
-    const res = await http.patch(
-      `${API_PATHS.roles}/${encodeURIComponent(id)}/resources`,
-      { resourceIds }
+  /** GET /role/menus/get/:roleId，返回该角色已勾选的菜单 id（字符串，与菜单树 value 一致） */
+  async getRoleMenus(roleId: string): Promise<string[]> {
+    const res = await http.get(
+      `${API_PATHS.roles}/menus/get/${encodeURIComponent(roleId)}`
     );
-    const data = unwrapPayload(res.data);
-    return normalizeRole((data ?? {}) as UnknownRecord);
+    const payload = unwrapPayload(res.data) as UnknownRecord;
+    const menusRaw = payload?.menus;
+    const arr = Array.isArray(menusRaw) ? menusRaw : [];
+    return (arr as UnknownRecord[]).map((m) =>
+      toIdStr(m?.id ?? m?.ID)
+    );
+  },
+
+  /** POST /role/menus/update/:roleId，body: { menuIds: number[] } */
+  async updateRoleMenus(roleId: string, menuIds: number[]): Promise<void> {
+    await http.post(
+      `${API_PATHS.roles}/menus/update/${encodeURIComponent(roleId)}`,
+      { menuIds }
+    );
   },
 
   async listResources(): Promise<Resource[]> {

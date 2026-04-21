@@ -3,8 +3,12 @@ import {
   Button,
   Form,
   Input,
+  InputNumber,
   Modal,
+  Select,
   Space,
+  Spin,
+  Tag,
   Table,
   TreeSelect,
   message,
@@ -21,8 +25,10 @@ import {
 
 type RoleFormValues = {
   name: string;
-  code: string;
-  description?: string;
+  keyword: string;
+  desc?: string;
+  status?: number;
+  sort?: number;
 };
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -58,7 +64,8 @@ export const RolePage = () => {
   const [form] = Form.useForm<RoleFormValues>();
 
   const [resourceModalRole, setResourceModalRole] = useState<Role | null>(null);
-  const [checkedResourceIds, setCheckedResourceIds] = useState<string[]>([]);
+  const [checkedMenuIds, setCheckedMenuIds] = useState<string[]>([]);
+  const [assignMenuLoading, setAssignMenuLoading] = useState(false);
 
   const fetchData = async (page: number, pageSize: number) => {
     setLoading(true);
@@ -98,8 +105,10 @@ export const RolePage = () => {
     setRoleModalOpen(true);
     form.setFieldsValue({
       name: record.name,
-      code: record.code,
-      description: record.description,
+      keyword: record.code,
+      desc: record.description,
+      status: record.status ?? 1,
+      sort: record.sort ?? 2,
     });
   };
 
@@ -107,12 +116,21 @@ export const RolePage = () => {
     try {
       const values = await form.validateFields();
       if (editingRole) {
-        await rbacApiService.updateRole(editingRole.id, values);
+        await rbacApiService.updateRole(editingRole.id, {
+          name: values.name,
+          keyword: values.keyword,
+          desc: values.desc,
+          status: values.status ?? 1,
+          sort: values.sort ?? 2,
+        });
         messageApi.success("角色编辑成功");
       } else {
         await rbacApiService.createRole({
-          ...values,
-          resourceIds: [],
+          name: values.name,
+          keyword: values.keyword,
+          desc: values.desc,
+          status: values.status ?? 1,
+          sort: values.sort ?? 2,
         });
         messageApi.success("角色新增成功");
       }
@@ -125,26 +143,6 @@ export const RolePage = () => {
       }
       messageApi.error(getRequestErrorMessage(err, "保存角色失败"));
     }
-  };
-
-  const handleDelete = async (record: Role) => {
-    Modal.confirm({
-      title: "确认删除该角色？",
-      content: `删除后将无法恢复：${record.name}`,
-      okText: "删除",
-      cancelText: "取消",
-      onOk: async () => {
-        try {
-          await rbacApiService.deleteRole(record.id);
-          messageApi.success("角色删除成功");
-          await fetchData(pagination.current, pagination.pageSize);
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          messageApi.error(getRequestErrorMessage(err, "删除角色失败"));
-        }
-      },
-    });
   };
 
   const treeData = useMemo<TreeOption[]>(() => {
@@ -161,34 +159,79 @@ export const RolePage = () => {
     return menuTree.map(mapNode);
   }, [menuTree]);
 
-  const handleOpenResourceModal = (role: Role) => {
+  const handleOpenResourceModal = async (role: Role) => {
     setResourceModalRole(role);
-    setCheckedResourceIds(role.resourceIds);
+    setCheckedMenuIds([]);
+    setAssignMenuLoading(true);
+    try {
+      const ids = await rbacApiService.getRoleMenus(role.id);
+      setCheckedMenuIds(ids.filter((id) => id !== ""));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      messageApi.error(getRequestErrorMessage(err, "加载角色菜单失败"));
+      setCheckedMenuIds(role.resourceIds ?? []);
+    } finally {
+      setAssignMenuLoading(false);
+    }
   };
 
-  const handleSaveRoleResources = async () => {
+  const handleSaveRoleMenus = async () => {
     if (!resourceModalRole) return;
     try {
-      await rbacApiService.updateRoleResources(
+      const selectedMenuIds = checkedMenuIds
+        .map((id) => Number(id))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+      const parentMap = new Map<number, number>();
+      const buildParentMap = (nodes: MenuTreeNode[], parentId?: number) => {
+        for (const node of nodes) {
+          if (parentId && parentId > 0) {
+            parentMap.set(node.id, parentId);
+          }
+          if (node.children?.length) {
+            buildParentMap(node.children, node.id);
+          }
+        }
+      };
+      buildParentMap(menuTree);
+
+      const finalIds = new Set<number>(selectedMenuIds);
+      for (const id of selectedMenuIds) {
+        let parentId = parentMap.get(id);
+        while (parentId && parentId > 0) {
+          finalIds.add(parentId);
+          parentId = parentMap.get(parentId);
+        }
+      }
+
+      await rbacApiService.updateRoleMenus(
         resourceModalRole.id,
-        checkedResourceIds
+        Array.from(finalIds)
       );
-      messageApi.success("角色分配资源成功");
+      messageApi.success("角色菜单分配成功");
       setResourceModalRole(null);
       await fetchData(pagination.current, pagination.pageSize);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      messageApi.error(getRequestErrorMessage(err, "更新角色资源失败"));
+      messageApi.error(getRequestErrorMessage(err, "更新角色菜单失败"));
     }
   };
 
   const columns: ColumnsType<Role> = [
     { title: "角色名称", dataIndex: "name" },
     { title: "角色编码", dataIndex: "code" },
+    { title: "排序", dataIndex: "sort" },
+    {
+      title: "状态",
+      dataIndex: "status",
+      render: (status?: number) =>
+        status === 1 ? <Tag color="success">启用</Tag> : <Tag color="default">禁用</Tag>,
+    },
     { title: "描述", dataIndex: "description" },
     {
-      title: "资源数量",
+      title: "菜单数量",
       dataIndex: "resourceIds",
       render: (list: string[]) => list?.length ?? 0,
     },
@@ -199,11 +242,11 @@ export const RolePage = () => {
           <Button type="link" onClick={() => openEditModal(record)}>
             编辑
           </Button>
-          <Button type="link" onClick={() => handleOpenResourceModal(record)}>
-            分配资源
-          </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
-            删除
+          <Button
+            type="link"
+            onClick={() => void handleOpenResourceModal(record)}
+          >
+            分配菜单
           </Button>
         </Space>
       ),
@@ -252,7 +295,11 @@ export const RolePage = () => {
         onOk={handleSubmit}
         destroyOnClose
       >
-        <Form<RoleFormValues> form={form} layout="vertical">
+        <Form<RoleFormValues>
+          form={form}
+          layout="vertical"
+          initialValues={{ status: 1, sort: 2 }}
+        >
           <Form.Item
             label="角色名称"
             name="name"
@@ -261,13 +308,35 @@ export const RolePage = () => {
             <Input />
           </Form.Item>
           <Form.Item
-            label="角色编码"
-            name="code"
-            rules={[{ required: true, message: "请输入角色编码" }]}
+            label="角色标识"
+            name="keyword"
+            rules={[{ required: true, message: "请输入角色标识" }]}
           >
             <Input placeholder="例如 admin / editor" />
           </Form.Item>
-          <Form.Item label="描述" name="description">
+          <Form.Item
+            label="状态"
+            name="status"
+            rules={[{ required: true, message: "请选择角色状态" }]}
+          >
+            <Select
+              options={[
+                { label: "启用", value: 1 },
+                { label: "禁用", value: 2 },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item
+            label="排序"
+            name="sort"
+            rules={[
+              { required: true, message: "请输入排序值" },
+              { type: "number", min: 1, max: 999, message: "排序范围 1-999" },
+            ]}
+          >
+            <InputNumber min={1} max={999} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item label="描述" name="desc">
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
@@ -277,27 +346,30 @@ export const RolePage = () => {
         open={resourceModalRole !== null}
         title={
           resourceModalRole
-            ? `为角色 ${resourceModalRole.name} 分配资源`
-            : "分配资源"
+            ? `为角色 ${resourceModalRole.name} 分配菜单`
+            : "分配菜单"
         }
         okText="确定"
         cancelText="取消"
         onCancel={() => setResourceModalRole(null)}
-        onOk={handleSaveRoleResources}
+        onOk={handleSaveRoleMenus}
         width={640}
         destroyOnClose
       >
-        <TreeSelect
-          style={{ width: "100%" }}
-          treeData={treeData}
-          value={checkedResourceIds}
-          treeCheckable
-          showCheckedStrategy={SHOW_PARENT}
-          placeholder="请选择菜单资源"
-          allowClear
-          treeDefaultExpandAll
-          onChange={(values) => setCheckedResourceIds(values as string[])}
-        />
+        <Spin spinning={assignMenuLoading}>
+          <TreeSelect
+            style={{ width: "100%" }}
+            treeData={treeData}
+            value={checkedMenuIds}
+            treeCheckable
+            showCheckedStrategy={SHOW_PARENT}
+            placeholder="请选择菜单权限"
+            allowClear
+            treeDefaultExpandAll
+            disabled={assignMenuLoading}
+            onChange={(values) => setCheckedMenuIds(values as string[])}
+          />
+        </Spin>
       </Modal>
     </>
   );

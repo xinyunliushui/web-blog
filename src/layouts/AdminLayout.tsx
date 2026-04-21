@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layout, Menu, Dropdown, Avatar, Spin, message } from "antd";
+import { Layout, Menu, Dropdown, Avatar, Spin } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import type { MenuProps } from "antd";
 import { useAuth } from "../context/AuthContext";
-import { rbacApiService } from "../services/rbacApi";
 import type { AccessMenuNode } from "../types/menu";
 import {
   accessMenuNodesToAntdItems,
@@ -16,39 +15,9 @@ const { Header, Sider, Content } = Layout;
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const [menuTree, setMenuTree] = useState<AccessMenuNode[]>([]);
-  const [menuLoading, setMenuLoading] = useState(false);
+  const { user, logout, accessMenuTree, accessMenuLoading } = useAuth();
   const [openKeys, setOpenKeys] = useState<string[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const uid = user?.id?.trim();
-    if (!uid) {
-      setMenuTree([]);
-      setMenuLoading(false);
-      return;
-    }
-    setMenuLoading(true);
-    rbacApiService
-      .getMenuAccessTree(uid)
-      .then((tree) => {
-        if (!cancelled) setMenuTree(tree);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMenuTree([]);
-          message.error("加载菜单失败");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setMenuLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
+  const menuTree: AccessMenuNode[] = accessMenuTree;
 
   const menuItems = useMemo(
     () =>
@@ -90,7 +59,7 @@ export const AdminLayout = () => {
         >
           博客管理系统
         </div>
-        {menuLoading ? (
+        {accessMenuLoading ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <Spin />
           </div>

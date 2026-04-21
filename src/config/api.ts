@@ -32,6 +32,8 @@ export const API_PATHS = {
   userUpdate: env("REACT_APP_API_PATH_USER_UPDATE", "/user/update"),
   /** GET，query: page、pageSize */
   roleList: env("REACT_APP_API_PATH_ROLE_LIST", "/role/list"),
+  /** POST，创建角色 */
+  roleCreate: env("REACT_APP_API_PATH_ROLE_CREATE", "/role/create"),
   users: env("REACT_APP_API_PATH_USERS", "/user"),
   roles: env("REACT_APP_API_PATH_ROLES", "/role"),
   resources: env("REACT_APP_API_PATH_RESOURCES", "/resources"),
