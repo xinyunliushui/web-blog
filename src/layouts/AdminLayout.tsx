@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layout, Menu, Dropdown, Avatar, Spin } from "antd";
+import {
+  Layout,
+  Menu,
+  Dropdown,
+  Avatar,
+  Spin,
+  Form,
+  Input,
+  Modal,
+  message,
+} from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import type { MenuProps } from "antd";
 import { useAuth } from "../context/AuthContext";
 import type { AccessMenuNode } from "../types/menu";
+import { API_PATHS } from "../config/api";
+import http from "../services/http";
+import { encryptPassword } from "../utils/rsa";
 import {
   accessMenuNodesToAntdItems,
   openKeysForSelectedPath,
@@ -13,10 +26,18 @@ import {
 const { Header, Sider, Content } = Layout;
 
 export const AdminLayout = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, accessMenuTree, accessMenuLoading } = useAuth();
   const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [changePwdSubmitting, setChangePwdSubmitting] = useState(false);
+  const [changePwdForm] = Form.useForm<{
+    oldPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }>();
   const menuTree: AccessMenuNode[] = accessMenuTree;
 
   const menuItems = useMemo(
@@ -33,7 +54,39 @@ export const AdminLayout = () => {
     setOpenKeys((prev) => Array.from(new Set([...prev, ...required])));
   }, [location.pathname, menuItems]);
 
+  const openChangePwdModal = () => {
+    changePwdForm.resetFields();
+    setChangePwdOpen(true);
+  };
+
+  const closeChangePwdModal = () => {
+    if (changePwdSubmitting) return;
+    setChangePwdOpen(false);
+    changePwdForm.resetFields();
+  };
+
+  const submitChangePwd = async () => {
+    try {
+      const values = await changePwdForm.validateFields();
+      setChangePwdSubmitting(true);
+      await http.post(API_PATHS.userChangePwd, {
+        oldPassword: encryptPassword(values.oldPassword),
+        newPassword: encryptPassword(values.newPassword),
+      });
+      messageApi.success("密码修改成功");
+      setChangePwdOpen(false);
+      changePwdForm.resetFields();
+    } finally {
+      setChangePwdSubmitting(false);
+    }
+  };
+
   const userMenu: MenuProps["items"] = [
+    {
+      key: "changePwd",
+      label: "修改密码",
+      onClick: openChangePwdModal,
+    },
     {
       key: "logout",
       label: "退出登录",
@@ -45,7 +98,9 @@ export const AdminLayout = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <>
+      {contextHolder}
+      <Layout style={{ minHeight: "100vh" }}>
       <Sider breakpoint="lg" collapsedWidth="0">
         <div
           style={{
@@ -112,7 +167,56 @@ export const AdminLayout = () => {
           </div>
         </Content>
       </Layout>
-    </Layout>
+      <Modal
+        title="修改密码"
+        open={changePwdOpen}
+        onCancel={closeChangePwdModal}
+        onOk={submitChangePwd}
+        okText="确认修改"
+        cancelText="取消"
+        confirmLoading={changePwdSubmitting}
+        maskClosable={false}
+      >
+        <Form form={changePwdForm} layout="vertical">
+          <Form.Item
+            label="原密码"
+            name="oldPassword"
+            rules={[{ required: true, message: "请输入原密码" }]}
+          >
+            <Input.Password placeholder="请输入原密码" />
+          </Form.Item>
+          <Form.Item
+            label="新密码"
+            name="newPassword"
+            rules={[
+              { required: true, message: "请输入新密码" },
+              { min: 6, message: "新密码至少 6 位" },
+            ]}
+          >
+            <Input.Password placeholder="请输入新密码" />
+          </Form.Item>
+          <Form.Item
+            label="确认新密码"
+            name="confirmPassword"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "请再次输入新密码" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || value === getFieldValue("newPassword")) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("两次输入的新密码不一致"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="请再次输入新密码" />
+          </Form.Item>
+        </Form>
+      </Modal>
+      </Layout>
+    </>
   );
 };
 

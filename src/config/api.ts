@@ -30,6 +30,8 @@ export const API_PATHS = {
   userCreate: env("REACT_APP_API_PATH_USER_CREATE", "/user/create"),
   /** POST，更新用户 */
   userUpdate: env("REACT_APP_API_PATH_USER_UPDATE", "/user/update"),
+  /** POST，当前登录用户修改密码 */
+  userChangePwd: env("REACT_APP_API_PATH_USER_CHANGE_PWD", "/user/changePwd"),
   /** GET，query: page、pageSize */
   roleList: env("REACT_APP_API_PATH_ROLE_LIST", "/role/list"),
   /** POST，创建角色 */
@@ -52,4 +54,8 @@ export const API_PATHS = {
     "REACT_APP_API_PATH_MENU_ACCESS_TREE",
     "/menu/access/tree"
   ),
+  /** GET /blog/list，文章列表 */
+  blogList: env("REACT_APP_API_PATH_BLOG_LIST", "/blog/list"),
+  /** POST /blog/create，新增文章 */
+  blogCreate: env("REACT_APP_API_PATH_BLOG_CREATE", "/blog/create"),
 } as const;

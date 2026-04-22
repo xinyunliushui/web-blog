@@ -58,6 +58,7 @@ const getBackendErrorMessage = (err: unknown): string => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [messageApi, contextHolder] = message.useMessage();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
@@ -169,7 +170,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!u) {
           throw new Error("登录成功，但获取用户信息失败，请稍后重试");
         }
-        message.success("登录成功");
+        messageApi.success("登录成功");
       } catch (err) {
         if (err instanceof Error) {
           const backendMessage = getBackendErrorMessage(err);
@@ -180,7 +181,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [refreshUser]
+    [messageApi, refreshUser]
   );
 
   const logout = useCallback(async () => {
@@ -217,7 +218,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           status: "enabled",
           roleIds: [],
         });
-        message.success("注册成功，请登录");
+        messageApi.success("注册成功，请登录");
       } catch (err) {
         message.error("注册失败");
         throw err;
@@ -225,27 +226,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    []
+    [messageApi]
   );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        sessionReady,
-        refreshUser,
-        accessMenuTree,
-        accessMenuLoading,
-        accessMenuPaths: collectLeafPaths(accessMenuTree),
-        refreshAccessMenus,
-        login,
-        logout,
-        register,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <>
+      {contextHolder}
+      <AuthContext.Provider
+        value={{
+          user,
+          loading,
+          sessionReady,
+          refreshUser,
+          accessMenuTree,
+          accessMenuLoading,
+          accessMenuPaths: collectLeafPaths(accessMenuTree),
+          refreshAccessMenus,
+          login,
+          logout,
+          register,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </>
   );
 };
 

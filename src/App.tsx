@@ -13,6 +13,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import UserPage from "./pages/UserPage";
 import RolePage from "./pages/RolePage";
 import ResourcePage from "./pages/ResourcePage";
+import BlogPage from "./pages/BlogPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -125,6 +126,7 @@ function AppRoutes() {
             <Route path="/system/users" element={<UserPage />} />
             <Route path="/system/roles" element={<RolePage />} />
             <Route path="/system/resources" element={<ResourcePage />} />
+            <Route path="/content/blogs" element={<BlogPage />} />
           </Route>
         </Route>
       </Route>
