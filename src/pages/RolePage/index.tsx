@@ -52,6 +52,7 @@ type TreeOption = {
 export const RolePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -67,7 +68,7 @@ export const RolePage = () => {
   const [checkedMenuIds, setCheckedMenuIds] = useState<string[]>([]);
   const [assignMenuLoading, setAssignMenuLoading] = useState(false);
 
-  const fetchData = async (page: number, pageSize: number) => {
+  const fetchData = async (page: number, pageSize: number): Promise<boolean> => {
     setLoading(true);
     try {
       const [roleRes, menuTreeRes] = await Promise.all([
@@ -81,12 +82,26 @@ export const RolePage = () => {
         total: roleRes.total,
       });
       setMenuTree((menuTreeRes.data?.data ?? []) as MenuTreeNode[]);
+      return true;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
       messageApi.error(getRequestErrorMessage(err, "加载角色数据失败"));
+      return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const ok = await fetchData(pagination.current, pagination.pageSize);
+      if (ok) {
+        messageApi.success("刷新成功");
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -261,7 +276,10 @@ export const RolePage = () => {
           新增角色
         </Button>
         <Button
-          onClick={() => fetchData(pagination.current, pagination.pageSize)}
+          loading={refreshing}
+          onClick={() => {
+            void handleRefresh();
+          }}
         >
           刷新
         </Button>

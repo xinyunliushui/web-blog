@@ -6,7 +6,7 @@
  * @Description
  */
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, Modal, Typography } from "antd";
+import { Button, Card, Form, Input, Modal, Typography, Image as AntdImage } from "antd";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -25,7 +25,9 @@ type RegisterFormValues = {
 export const RegisterPage = () => {
   const { user, loading, register } = useAuth();
   const navigate = useNavigate();
+  const [form] = Form.useForm<RegisterFormValues>();
   const [redirectSeconds, setRedirectSeconds] = useState(0);
+  const avatarPreview = String(Form.useWatch("avatar", form) ?? "").trim();
 
   useEffect(() => {
     if (redirectSeconds <= 0) {
@@ -75,7 +77,7 @@ export const RegisterPage = () => {
       }}
     >
       <Card title="博客管理后台 - 注册" style={{ width: 360 }}>
-        <Form<RegisterFormValues> onFinish={handleFinish}>
+        <Form<RegisterFormValues> form={form} onFinish={handleFinish}>
           <Form.Item
             name="username"
             rules={[{ required: true, message: "请输入用户名" }]}
@@ -108,6 +110,17 @@ export const RegisterPage = () => {
           <Form.Item name="avatar">
             <Input placeholder="头像 URL（可选）" allowClear />
           </Form.Item>
+          {avatarPreview ? (
+            <Form.Item label="头像预览">
+              <AntdImage
+                src={avatarPreview}
+                alt="头像预览"
+                width={96}
+                height={96}
+                style={{ objectFit: "cover", borderRadius: "50%" }}
+              />
+            </Form.Item>
+          ) : null}
           <Form.Item name="introduction">
             <Input.TextArea
               rows={3}

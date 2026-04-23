@@ -49,23 +49,38 @@ type MenuItem = {
 export const ResourcePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [resources, setResources] = useState<MenuItem[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
   const [form] = Form.useForm<ResourceFormValues>();
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<boolean> => {
     setLoading(true);
     try {
       const res = await http.get(API_PATHS.menuTree);
       setResources((res.data?.data ?? []) as MenuItem[]);
+      return true;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
       messageApi.error(getRequestErrorMessage(err, "加载资源数据失败"));
+      return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const ok = await fetchData();
+      if (ok) {
+        messageApi.success("刷新成功");
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -227,7 +242,14 @@ export const ResourcePage = () => {
         <Button type="primary" onClick={openCreateModal}>
           新增资源
         </Button>
-        <Button onClick={fetchData}>刷新</Button>
+        <Button
+          loading={refreshing}
+          onClick={() => {
+            void handleRefresh();
+          }}
+        >
+          刷新
+        </Button>
       </Space>
       <Table<MenuItem>
         rowKey="id"

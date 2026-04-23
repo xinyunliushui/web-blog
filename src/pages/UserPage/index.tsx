@@ -39,6 +39,7 @@ export const UserPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -52,8 +53,9 @@ export const UserPage = () => {
   const [roleModalUser, setRoleModalUser] = useState<User | null>(null);
   const [roleModalRoleIds, setRoleModalRoleIds] = useState<string[]>([]);
   const [form] = Form.useForm<UserFormValues>();
+  const avatarPreview = String(Form.useWatch("avatar", form) ?? "").trim();
 
-  const fetchData = async (page: number, pageSize: number) => {
+  const fetchData = async (page: number, pageSize: number): Promise<boolean> => {
     setLoading(true);
     try {
       const [userRes, roleRes] = await Promise.all([
@@ -68,12 +70,26 @@ export const UserPage = () => {
         pageSize: userRes.pageSize,
         total: userRes.total,
       });
+      return true;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
       messageApi.error(getRequestErrorMessage(err, "加载用户数据失败"));
+      return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const ok = await fetchData(pagination.current, pagination.pageSize);
+      if (ok) {
+        messageApi.success("刷新成功");
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -247,7 +263,10 @@ export const UserPage = () => {
       {contextHolder}
       <Space style={{ marginBottom: 16 }}>
         <Button
-          onClick={() => fetchData(pagination.current, pagination.pageSize)}
+          loading={refreshing}
+          onClick={() => {
+            void handleRefresh();
+          }}
         >
           刷新
         </Button>
@@ -329,6 +348,17 @@ export const UserPage = () => {
           <Form.Item label="头像" name="avatar">
             <Input placeholder="头像图片 URL" allowClear />
           </Form.Item>
+          {avatarPreview ? (
+            <Form.Item label="头像预览">
+              <AntdImage
+                src={avatarPreview}
+                alt="头像预览"
+                width={96}
+                height={96}
+                style={{ objectFit: "cover", borderRadius: "50%" }}
+              />
+            </Form.Item>
+          ) : null}
           <Form.Item label="简介" name="introduction">
             <Input.TextArea
               rows={3}

@@ -58,4 +58,13 @@ export const API_PATHS = {
   blogList: env("REACT_APP_API_PATH_BLOG_LIST", "/blog/list"),
   /** POST /blog/create，新增文章 */
   blogCreate: env("REACT_APP_API_PATH_BLOG_CREATE", "/blog/create"),
+  /** POST /blog/update/:blogId，编辑文章 */
+  blogUpdate: env("REACT_APP_API_PATH_BLOG_UPDATE", "/blog/update"),
+  /** GET /blog/detail/:blogId，文章详情 */
+  blogDetail: env("REACT_APP_API_PATH_BLOG_DETAIL", "/blog/detail"),
+  /** POST /blog/publish/:blogId，发布/下线 */
+  blogUpdatePublish: env(
+    "REACT_APP_API_PATH_BLOG_UPDATE_PUBLISH",
+    "/blog/publish"
+  ),
 } as const;

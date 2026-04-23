@@ -80,6 +80,15 @@ export const LoginPage = () => {
             ) : null}
           </Form.Item>
         </Form>
+        <Button
+          type="default"
+          block
+          size="large"
+          style={{ marginTop: 4, fontWeight: 600 }}
+          onClick={() => navigate("/blogs")}
+        >
+          进入博客系统
+        </Button>
         <Typography.Paragraph style={{ marginTop: 16, fontSize: 12 }}>
           默认账号：
           <br />

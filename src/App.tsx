@@ -14,6 +14,9 @@ import UserPage from "./pages/UserPage";
 import RolePage from "./pages/RolePage";
 import ResourcePage from "./pages/ResourcePage";
 import BlogPage from "./pages/BlogPage";
+import BlogCreatePage from "./pages/BlogCreatePage";
+import BlogPublicListPage from "./pages/BlogPublicListPage";
+import BlogDetailPage from "./pages/BlogDetailPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -102,6 +105,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />
+      <Route path="/blogs" element={<BlogPublicListPage />} />
+      <Route path="/blogs/:blogId" element={<BlogDetailPage />} />
       <Route
         path="/login"
         element={
@@ -122,6 +127,8 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/no-access" element={<NoAccessPage />} />
+          <Route path="/blog/create" element={<BlogCreatePage />} />
+          <Route path="/blog/edit/:blogId" element={<BlogCreatePage />} />
           <Route element={<AuthorizedRoute />}>
             <Route path="/system/users" element={<UserPage />} />
             <Route path="/system/roles" element={<RolePage />} />
