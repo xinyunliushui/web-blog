@@ -2,12 +2,12 @@
  * @Date: 2026-03-31 09:49:53
  * @Author: zhongwenhao
  * @LastEditors: zhongwenhao
- * @LastEditTime: 2026-04-01 09:58:12
+ * @LastEditTime: 2026-04-24 11:30:47
  * @Description:
  */
 
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Form, Input, Typography } from "antd";
+import { Alert, Button, Card, Form, Input, Tabs, Typography } from "antd";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -26,6 +26,7 @@ type LoginFormValues = {
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { loading, login } = useAuth();
+  const [activeTab, setActiveTab] = useState<"blog" | "admin">("blog");
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleFinish = async (values: LoginFormValues) => {
@@ -48,55 +49,109 @@ export const LoginPage = () => {
         justifyContent: "center",
       }}
     >
-      <Card title="博客管理后台 - 登录" style={{ width: 360 }}>
-        <Form<LoginFormValues> onFinish={handleFinish}>
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: "请输入用户名" }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="请输入用户名" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            rules={[
-              {
-                required: true,
-                message: "请输入密码",
-              },
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              登录
-            </Button>
-            {loginError ? (
-              <Alert
-                type="error"
-                message={loginError}
-                style={{ marginTop: 12 }}
-              />
-            ) : null}
-          </Form.Item>
-        </Form>
-        <Button
-          type="default"
-          block
-          size="large"
-          style={{ marginTop: 4, fontWeight: 600 }}
-          onClick={() => navigate("/blogs")}
-        >
-          进入博客系统
-        </Button>
-        <Typography.Paragraph style={{ marginTop: 16, fontSize: 12 }}>
-          默认账号：
-          <br />
-          admin / admin123
-        </Typography.Paragraph>
-        <Typography.Paragraph style={{ marginTop: 8, fontSize: 12 }}>
-          还没有账号？<Link to="/register">去注册</Link>
-        </Typography.Paragraph>
+      <Card title="个人博客系统" style={{ width: 360 }}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={(key) => {
+            setActiveTab(key as "blog" | "admin");
+            setLoginError(null);
+          }}
+          style={{ minHeight: 250 }}
+          items={[
+            {
+              key: "blog",
+              label: "博客浏览",
+              children: (
+                <div
+                  style={{
+                    minHeight: 250,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Typography.Paragraph
+                    type="secondary"
+                    style={{
+                      marginBottom: 16,
+                      fontSize: 12,
+                      textAlign: "left",
+                    }}
+                  >
+                    浏览公开博客内容，如需后台管理可切换到“后台登录”
+                  </Typography.Paragraph>
+                  <Button
+                    type="primary"
+                    block
+                    size="large"
+                    style={{ fontWeight: 600 }}
+                    onClick={() => navigate("/blogs")}
+                  >
+                    点击浏览博客
+                  </Button>
+                </div>
+              ),
+            },
+            {
+              key: "admin",
+              label: "后台登录",
+              children: (
+                <div style={{ minHeight: 250 }}>
+                  <Form<LoginFormValues> onFinish={handleFinish}>
+                    <Form.Item
+                      name="username"
+                      rules={[{ required: true, message: "请输入用户名" }]}
+                    >
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder="请输入用户名"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="password"
+                      rules={[
+                        {
+                          required: true,
+                          message: "请输入密码",
+                        },
+                      ]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="密码"
+                      />
+                    </Form.Item>
+                    <Form.Item style={{ marginBottom: 0 }}>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        block
+                        loading={loading}
+                      >
+                        登录
+                      </Button>
+                      {loginError ? (
+                        <Alert
+                          type="error"
+                          message={loginError}
+                          style={{ marginTop: 12 }}
+                        />
+                      ) : null}
+                    </Form.Item>
+                  </Form>
+                  <Typography.Paragraph style={{ marginTop: 16, fontSize: 12 }}>
+                    默认账号：
+                    <br />
+                    admin / admin123
+                  </Typography.Paragraph>
+                  <Typography.Paragraph style={{ marginTop: 8, fontSize: 12 }}>
+                    还没有账号？<Link to="/register">去注册</Link>
+                  </Typography.Paragraph>
+                </div>
+              ),
+            },
+          ]}
+        />
       </Card>
     </div>
   );

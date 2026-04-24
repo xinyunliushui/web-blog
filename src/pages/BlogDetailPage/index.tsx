@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Divider, Image as AntdImage, Spin, Tag, Typography, message } from "antd";
+import { Button, Divider, Grid, Image as AntdImage, Spin, Tag, Typography, message } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { renderMarkdown } from "../../components/MarkdownEditor";
 import { API_PATHS } from "../../config/api";
@@ -31,6 +31,8 @@ const normalizeBlogDetail = (raw: Record<string, unknown>): BlogDetail => ({
 });
 
 export const BlogDetailPage = () => {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const navigate = useNavigate();
   const { blogId } = useParams<{ blogId: string }>();
   const [messageApi, contextHolder] = message.useMessage();
@@ -68,7 +70,13 @@ export const BlogDetailPage = () => {
     .filter(Boolean);
 
   return (
-    <div style={{ maxWidth: 980, margin: "24px auto", padding: "0 16px" }}>
+    <div
+      style={{
+        maxWidth: 980,
+        margin: isMobile ? "12px auto" : "24px auto",
+        padding: isMobile ? "0 12px" : "0 16px",
+      }}
+    >
       {contextHolder}
       <Button style={{ marginBottom: 16 }} onClick={() => navigate("/blogs")}>
         返回列表
@@ -76,10 +84,10 @@ export const BlogDetailPage = () => {
       <Spin spinning={loading}>
         {detail ? (
           <article>
-            <Typography.Title level={1} style={{ marginBottom: 8 }}>
+            <Typography.Title level={isMobile ? 2 : 1} style={{ marginBottom: 8 }}>
               {detail.title || "-"}
             </Typography.Title>
-            <Typography.Text type="secondary">
+            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>
               发布时间：{detail.publishedAt ? new Date(detail.publishedAt).toLocaleString() : "未发布"}
             </Typography.Text>
             <Divider />
@@ -88,16 +96,23 @@ export const BlogDetailPage = () => {
                 src={detail.coverImage}
                 alt={detail.title}
                 width="100%"
-                style={{ borderRadius: 10, marginBottom: 16, objectFit: "cover" }}
+                wrapperStyle={{ display: "block", lineHeight: 0, marginBottom: 16 }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  borderRadius: 10,
+                  objectFit: "cover",
+                  maxHeight: isMobile ? 240 : 520,
+                }}
               />
             ) : null}
             <Typography.Paragraph
               style={{
-                fontSize: 16,
+                fontSize: isMobile ? 14 : 16,
                 lineHeight: 1.8,
                 background: "#fafafa",
                 borderLeft: "4px solid #1677ff",
-                padding: "12px 14px",
+                padding: isMobile ? "10px 12px" : "12px 14px",
                 borderRadius: 6,
               }}
             >
@@ -113,7 +128,12 @@ export const BlogDetailPage = () => {
             </div>
             <Divider />
             <div
-              style={{ lineHeight: 1.9, fontSize: 16 }}
+              style={{
+                lineHeight: 1.9,
+                fontSize: isMobile ? 15 : 16,
+                overflowX: "auto",
+                wordBreak: "break-word",
+              }}
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </article>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, Image as AntdImage, List, Space, Spin, Tag, Typography, message } from "antd";
+import { Card, Grid, Image as AntdImage, List, Space, Spin, Tag, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
 import { API_PATHS } from "../../config/api";
@@ -31,6 +31,8 @@ const normalizeBlog = (raw: Record<string, unknown>): BlogListItem => ({
 });
 
 export const BlogPublicListPage = () => {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
@@ -63,9 +65,15 @@ export const BlogPublicListPage = () => {
   }, [messageApi]);
 
   return (
-    <div style={{ maxWidth: 980, margin: "24px auto", padding: "0 16px" }}>
+    <div
+      style={{
+        maxWidth: 980,
+        margin: isMobile ? "12px auto" : "24px auto",
+        padding: isMobile ? "0 12px" : "0 16px",
+      }}
+    >
       {contextHolder}
-      <Typography.Title level={2} style={{ marginBottom: 20 }}>
+      <Typography.Title level={isMobile ? 3 : 2} style={{ marginBottom: isMobile ? 14 : 20 }}>
         博客文章
       </Typography.Title>
       <Spin spinning={loading}>
@@ -81,32 +89,44 @@ export const BlogPublicListPage = () => {
             return (
               <List.Item
                 key={item.id}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: "pointer", paddingBlock: isMobile ? 10 : 16 }}
                 onClick={() => navigate(`/blogs/${item.id}`)}
               >
-                <Card hoverable bodyStyle={{ padding: 16 }}>
-                  <div style={{ display: "flex", gap: 16 }}>
+                <Card hoverable bodyStyle={{ padding: isMobile ? 12 : 16 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: isMobile ? 10 : 16,
+                      flexDirection: isMobile ? "column" : "row",
+                    }}
+                  >
                     <AntdImage
                       src={item.coverImage}
                       alt={item.title}
                       preview={false}
-                      width={220}
-                      height={130}
-                      style={{ objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                      width={isMobile ? "100%" : 220}
+                      height={isMobile ? 180 : 130}
+                      wrapperStyle={{ width: isMobile ? "100%" : undefined, lineHeight: 0 }}
+                      style={{ objectFit: "cover", borderRadius: 6, flexShrink: 0, display: "block" }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Typography.Text type="secondary">
                         {item.category || "未分类"}
                       </Typography.Text>
                       <Typography.Title
-                        level={4}
-                        style={{ margin: "6px 0 8px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                        level={isMobile ? 5 : 4}
+                        style={{
+                          margin: "6px 0 8px",
+                          whiteSpace: isMobile ? "normal" : "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
                       >
                         {item.title || "-"}
                       </Typography.Title>
                       <Typography.Paragraph
                         style={{ marginBottom: 10 }}
-                        ellipsis={{ rows: 2 }}
+                        ellipsis={{ rows: isMobile ? 3 : 2 }}
                       >
                         {item.summary || "-"}
                       </Typography.Paragraph>
