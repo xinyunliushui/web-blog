@@ -56,6 +56,8 @@ export const API_PATHS = {
   ),
   /** GET /blog/list，文章列表 */
   blogList: env("REACT_APP_API_PATH_BLOG_LIST", "/blog/list"),
+  /** GET /blog/search，全文搜索 query: keyword、page、pageSize */
+  blogSearch: env("REACT_APP_API_PATH_BLOG_SEARCH", "/blog/search"),
   /** POST /blog/create，新增文章 */
   blogCreate: env("REACT_APP_API_PATH_BLOG_CREATE", "/blog/create"),
   /** POST /blog/update/:blogId，编辑文章 */

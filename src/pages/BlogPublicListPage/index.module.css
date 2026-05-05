@@ -1,0 +1,43 @@
+/* ES 高亮：<mark class='hl'> */
+.hitHtml :global(mark),
+.hitHtml mark {
+  background: linear-gradient(
+    120deg,
+    rgba(255, 236, 179, 0.95),
+    rgba(255, 213, 79, 0.88)
+  );
+  color: inherit;
+  padding: 0 0.12em;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.titleClamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  margin: 6px 0 8px !important;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.35;
+}
+
+.snippetClamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  word-break: break-word;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+@media (max-width: 767px) {
+  .snippetClamp {
+    -webkit-line-clamp: 5;
+  }
+}
