@@ -6,7 +6,8 @@
  * @Description:
  */
 import { ReactNode } from "react";
-import { Spin } from "antd";
+import { ConfigProvider, Spin } from "antd";
+import zhCN from "antd/locale/zh_CN";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "antd/dist/reset.css";
 import AdminLayout from "./layouts/AdminLayout";
@@ -143,11 +144,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ConfigProvider locale={zhCN}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ConfigProvider>
   );
 }
 

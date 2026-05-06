@@ -1,6 +1,8 @@
-/* ES 高亮：<mark class='hl'> */
+/* ES 高亮：<mark class='hl'>；未配置 tags 时标题默认为 <em> */
 .hitHtml :global(mark),
-.hitHtml mark {
+.hitHtml mark,
+.hitHtml :global(em),
+.hitHtml em {
   background: linear-gradient(
     120deg,
     rgba(255, 236, 179, 0.95),
@@ -10,6 +12,7 @@
   padding: 0 0.12em;
   border-radius: 3px;
   font-weight: 600;
+  font-style: normal;
 }
 
 .titleClamp {
@@ -34,6 +37,11 @@
   font-size: 14px;
   line-height: 1.55;
   color: rgba(0, 0, 0, 0.65);
+}
+
+/* 搜索摘要：与列表模式 Typography.Paragraph type="secondary" 观感一致 */
+.searchSummaryTone {
+  color: rgba(0, 0, 0, 0.45);
 }
 
 @media (max-width: 767px) {
