@@ -1,6 +1,6 @@
 ## 博客以及管理后台
 - 该项目的创建使用[Create React App](https://github.com/facebook/create-react-app).
-- 该项目主要是为了配合go-blog后端系统，前端功能代码使用cursor生成
+- 该项目主要是为了配合[go-blog](https://github.com/xinyunliushui/go-blog)后端系统，前端功能代码使用cursor生成
 
 ## 本地开发
 ```bash
