@@ -21,6 +21,7 @@ type BlogCreateFormValues = {
 type BlogEditState = {
   blog?: {
     id?: number;
+    status?: number;
     title?: string;
     content?: string;
     summary?: string;
@@ -30,6 +31,9 @@ type BlogEditState = {
     tags?: string;
   };
 };
+
+/** 与后台博客状态一致：2 = 已发布 */
+const BLOG_STATUS_PUBLISHED = 2;
 
 export const BlogCreatePage = () => {
   const navigate = useNavigate();
@@ -54,6 +58,13 @@ export const BlogCreatePage = () => {
     const blog = state.blog;
     if (!blog || Number(blog.id) !== editingBlogId) {
       messageApi.warning("未找到可编辑的文章数据，请从列表页进入编辑");
+      navigate("/content/blogs", { replace: true });
+      return;
+    }
+    if (Number(blog.status) === BLOG_STATUS_PUBLISHED) {
+      messageApi.warning(
+        "该文章当前为「已发布」状态，不能直接编辑。请返回列表先点击「下线」，再进入编辑。"
+      );
       navigate("/content/blogs", { replace: true });
       return;
     }

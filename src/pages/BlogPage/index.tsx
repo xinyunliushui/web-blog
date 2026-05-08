@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Space, Table, Tag, message } from "antd";
+import { Alert, Button, Space, Table, Tag, Tooltip, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
@@ -35,6 +35,13 @@ type ListResponseData = {
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+
+/** 与后台一致：2 已发布 · 3 已下线（私密）；其余为草稿 */
+const BLOG_STATUS_PUBLISHED = 2;
+const BLOG_STATUS_OFFLINE = 3;
+
+const isPublishedBlog = (record: BlogRecord) =>
+  record.status === BLOG_STATUS_PUBLISHED;
 
 const toText = (v: unknown): string => {
   if (v == null) return "";
@@ -125,7 +132,10 @@ export const BlogPage = () => {
   };
 
   const updatePublishStatus = async (record: BlogRecord) => {
-    const nextStatus = record.status === 2 ? 3 : 2;
+    const nextStatus =
+      record.status === BLOG_STATUS_PUBLISHED
+        ? BLOG_STATUS_OFFLINE
+        : BLOG_STATUS_PUBLISHED;
     const actionText = nextStatus === 2 ? "发布" : "下线";
     setPublishLoadingId(record.id);
     try {
@@ -196,9 +206,9 @@ export const BlogPage = () => {
       title: "状态",
       dataIndex: "status",
       render: (status: number) =>
-        status === 2 ? (
+        status === BLOG_STATUS_PUBLISHED ? (
           <Tag color="success">已发布</Tag>
-        ) : status === 3 ? (
+        ) : status === BLOG_STATUS_OFFLINE ? (
           <Tag color="default">已下线</Tag>
         ) : (
           <Tag color="processing">草稿</Tag>
@@ -209,23 +219,34 @@ export const BlogPage = () => {
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button
-            type="link"
-            onClick={() => navigate(`/blogs/${record.id}`)}
-          >
+          <Button type="link" onClick={() => navigate(`/blogs/${record.id}`)}>
             预览文章
           </Button>
-          <Button
-            type="link"
-            onClick={() =>
-              navigate(`/blog/edit/${record.id}`, {
-                state: { blog: record },
-              })
-            }
-          >
-            编辑
-          </Button>
-          {record.status === 2 ? (
+          {isPublishedBlog(record) ? (
+            <Tooltip
+              title={
+                "已上线的文章不能直接编辑，请先点击「下线」。下线后仍为站内可见的线下状态，修改完成后再「发布」即可。"
+              }
+            >
+              <span>
+                <Button type="link" disabled>
+                  编辑
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
+            <Button
+              type="link"
+              onClick={() =>
+                navigate(`/blog/edit/${record.id}`, {
+                  state: { blog: record },
+                })
+              }
+            >
+              编辑
+            </Button>
+          )}
+          {record.status === BLOG_STATUS_PUBLISHED ? (
             <Button
               type="link"
               loading={publishLoadingId === record.id}
