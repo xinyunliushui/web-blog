@@ -161,6 +161,8 @@ export const AdminLayout = () => {
               background: "#fff",
               borderRadius: 8,
               minHeight: 360,
+              maxWidth: "100%",
+              overflowX: "auto",
             }}
           >
             <Outlet />

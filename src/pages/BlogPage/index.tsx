@@ -217,6 +217,8 @@ export const BlogPage = () => {
     {
       title: "操作",
       key: "actions",
+      fixed: "right",
+      width: 300,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => navigate(`/blogs/${record.id}`)}>
@@ -294,6 +296,7 @@ export const BlogPage = () => {
         loading={loading}
         columns={columns}
         dataSource={blogs}
+        scroll={{ x: "max-content" }}
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,

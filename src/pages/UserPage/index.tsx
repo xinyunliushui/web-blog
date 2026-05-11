@@ -174,14 +174,17 @@ export const UserPage = () => {
     {
       title: "用户名",
       dataIndex: "username",
+      ellipsis: true,
     },
     {
       title: "昵称",
       dataIndex: "nickname",
+      ellipsis: true,
     },
     {
       title: "手机号",
       dataIndex: "mobile",
+      ellipsis: true,
     },
     {
       title: "头像",
@@ -196,6 +199,7 @@ export const UserPage = () => {
     {
       title: "简介",
       dataIndex: "introduction",
+      ellipsis: true,
     },
     {
       title: "状态",
@@ -210,6 +214,7 @@ export const UserPage = () => {
     {
       title: "角色",
       dataIndex: "roleIds",
+      ellipsis: true,
       render: (roleIds: string[]) => {
         if (!roleIds?.length)
           return <span style={{ color: "#999" }}>未分配</span>;
@@ -230,6 +235,9 @@ export const UserPage = () => {
     },
     {
       title: "操作",
+      key: "actions",
+      fixed: "right",
+      width: 220,
       render: (_, record) => {
         const self = isCurrentUser(record);
         return (
@@ -276,6 +284,7 @@ export const UserPage = () => {
         loading={loading}
         columns={columns}
         dataSource={users}
+        scroll={{ x: "max-content" }}
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,

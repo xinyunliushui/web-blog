@@ -20,9 +20,29 @@ const isUnauthorizedCode = (code: unknown): boolean =>
 const isForbiddenCode = (code: unknown): boolean =>
   code === 403 || code === "403";
 
+/**
+ * 公开博客浏览页：未登录刷新时不应因 /user/info 等返回 401 被全局重定向到登录。
+ * 与 App 路由中的 `/blogs`、`/blogs/:blogId` 对齐（仅一层 path segment）。
+ */
+function isBlogPublicBrowsePath(pathname: string): boolean {
+  const p =
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.replace(/\/+$/, "")
+      : pathname;
+  if (p === "/blogs") return true;
+  if (p.startsWith("/blogs/")) {
+    const rest = p.slice("/blogs/".length);
+    return rest.length > 0 && !rest.includes("/");
+  }
+  return false;
+}
+
 const redirectToLogin = () => {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+  if (isBlogPublicBrowsePath(window.location.pathname)) {
+    return;
+  }
   if (window.location.pathname !== "/login") {
     window.location.assign("/login");
   }

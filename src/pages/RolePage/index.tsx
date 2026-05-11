@@ -22,6 +22,7 @@ import {
   getRequestErrorMessage,
   isFormValidationError,
 } from "../../utils/requestError";
+import { runDeduped } from "../../utils/inflightDedupe";
 
 type RoleFormValues = {
   name: string;
@@ -73,7 +74,9 @@ export const RolePage = () => {
     try {
       const [roleRes, menuTreeRes] = await Promise.all([
         rbacApiService.listRoles({ page, pageSize }),
-        http.get(API_PATHS.menuTree),
+        runDeduped(`menuTree:${API_PATHS.menuTree}`, () =>
+          http.get(API_PATHS.menuTree)
+        ),
       ]);
       setRoles(roleRes.list);
       setPagination({
@@ -235,23 +238,27 @@ export const RolePage = () => {
   };
 
   const columns: ColumnsType<Role> = [
-    { title: "角色名称", dataIndex: "name" },
-    { title: "角色编码", dataIndex: "code" },
-    { title: "排序", dataIndex: "sort" },
+    { title: "角色名称", dataIndex: "name", ellipsis: true },
+    { title: "角色编码", dataIndex: "code", ellipsis: true },
+    { title: "排序", dataIndex: "sort", width: 88 },
     {
       title: "状态",
       dataIndex: "status",
       render: (status?: number) =>
         status === 1 ? <Tag color="success">启用</Tag> : <Tag color="default">禁用</Tag>,
     },
-    { title: "描述", dataIndex: "description" },
+    { title: "描述", dataIndex: "description", ellipsis: true },
     {
       title: "菜单数量",
       dataIndex: "resourceIds",
+      width: 100,
       render: (list: string[]) => list?.length ?? 0,
     },
     {
       title: "操作",
+      key: "actions",
+      fixed: "right",
+      width: 220,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => openEditModal(record)}>
@@ -289,6 +296,7 @@ export const RolePage = () => {
         loading={loading}
         columns={columns}
         dataSource={roles}
+        scroll={{ x: "max-content" }}
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,

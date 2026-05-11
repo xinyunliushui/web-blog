@@ -18,6 +18,7 @@ import {
   getRequestErrorMessage,
   isFormValidationError,
 } from "../../utils/requestError";
+import { runDeduped } from "../../utils/inflightDedupe";
 
 type ResourceFormValues = {
   name: string;
@@ -59,7 +60,9 @@ export const ResourcePage = () => {
   const fetchData = async (): Promise<boolean> => {
     setLoading(true);
     try {
-      const res = await http.get(API_PATHS.menuTree);
+      const res = await runDeduped(`menuTree:${API_PATHS.menuTree}`, () =>
+        http.get(API_PATHS.menuTree)
+      );
       setResources((res.data?.data ?? []) as MenuItem[]);
       return true;
     } catch (err) {
@@ -167,8 +170,8 @@ export const ResourcePage = () => {
   };
 
   const columns: ColumnsType<MenuItem> = [
-    { title: "名称", dataIndex: "name" },
-    { title: "标题", dataIndex: "title" },
+    { title: "名称", dataIndex: "name", ellipsis: true },
+    { title: "标题", dataIndex: "title", ellipsis: true },
     {
       title: "类型",
       dataIndex: "type",
@@ -177,11 +180,13 @@ export const ResourcePage = () => {
     {
       title: "路由路径",
       dataIndex: "path",
+      ellipsis: true,
       render: (value?: string) => value || "-",
     },
     {
       title: "父级资源",
       dataIndex: "parentId",
+      ellipsis: true,
       render: (parentId?: number) => {
         if (!parentId) return "根节点";
         return parentTitleMap.get(parentId) ?? parentId;
@@ -200,6 +205,9 @@ export const ResourcePage = () => {
     },
     {
       title: "操作",
+      key: "actions",
+      fixed: "right",
+      width: 120,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => openEditModal(record)}>
@@ -256,6 +264,7 @@ export const ResourcePage = () => {
         loading={loading}
         columns={columns}
         dataSource={resources}
+        scroll={{ x: "max-content" }}
         expandedRowKeys={expandedRowKeys}
         onExpandedRowsChange={(keys) => setExpandedRowKeys(keys)}
       />

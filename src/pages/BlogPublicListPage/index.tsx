@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
 import { API_PATHS } from "../../config/api";
+import { runDeduped } from "../../utils/inflightDedupe";
 import { getRequestErrorMessage } from "../../utils/requestError";
 import styles from "./index.module.css";
 
@@ -229,10 +230,14 @@ export const BlogPublicListPage = () => {
       const seq = ++fetchSeqRef.current;
       setLoading(true);
       try {
-        const res = await http.get(API_PATHS.blogList, {
-          params: { page, pageSize, status: 2 },
-          silent: true,
-        });
+        const res = await runDeduped(
+          `blogList:published:${page}:${pageSize}`,
+          () =>
+            http.get(API_PATHS.blogList, {
+              params: { page, pageSize, status: 2 },
+              silent: true,
+            })
+        );
         if (seq !== fetchSeqRef.current) return;
         const payload = (res.data?.data ?? {}) as ListResponseData;
         const rawList = Array.isArray(payload.content)
