@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import http from "../../services/http";
 import { API_PATHS } from "../../config/api";
 import { getRequestErrorMessage } from "../../utils/requestError";
+import { runDeduped } from "../../utils/inflightDedupe";
 
 type BlogRecord = {
   id: number;
@@ -91,28 +92,30 @@ export const BlogPage = () => {
     page: number,
     pageSize: number
   ): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const res = await http.get(API_PATHS.blogList, {
-        params: { page, pageSize },
-      });
-      const payload = (res.data?.data ?? {}) as ListResponseData;
-      const list = getListFromPayload(payload).map((item) =>
-        normalizeBlog((item ?? {}) as Record<string, unknown>)
-      );
-      setBlogs(list);
-      setPagination({
-        current: Number(payload.page ?? page) || page,
-        pageSize: Number(payload.pageSize ?? pageSize) || pageSize,
-        total: Number(payload.total ?? 0),
-      });
-      return true;
-    } catch (err) {
-      messageApi.error(getRequestErrorMessage(err, "加载文章列表失败"));
-      return false;
-    } finally {
-      setLoading(false);
-    }
+    return runDeduped(`blog:list:${page}:${pageSize}`, async () => {
+      setLoading(true);
+      try {
+        const res = await http.get(API_PATHS.blogList, {
+          params: { page, pageSize },
+        });
+        const payload = (res.data?.data ?? {}) as ListResponseData;
+        const list = getListFromPayload(payload).map((item) =>
+          normalizeBlog((item ?? {}) as Record<string, unknown>)
+        );
+        setBlogs(list);
+        setPagination({
+          current: Number(payload.page ?? page) || page,
+          pageSize: Number(payload.pageSize ?? pageSize) || pageSize,
+          total: Number(payload.total ?? 0),
+        });
+        return true;
+      } catch (err) {
+        messageApi.error(getRequestErrorMessage(err, "加载文章列表失败"));
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   useEffect(() => {
