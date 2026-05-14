@@ -405,7 +405,11 @@ export const BlogPublicListPage = () => {
               <List.Item
                 key={item.id}
                 style={{ cursor: "pointer", paddingBlock: isMobile ? 10 : 16 }}
-                onClick={() => navigate(`/blogs/${item.id}`)}
+                onClick={() =>
+                  navigate(`/blogs/${item.id}`, {
+                    state: { fromBlogNav: true },
+                  })
+                }
               >
                 <Card hoverable bodyStyle={{ padding: isMobile ? 12 : 16 }}>
                   <div

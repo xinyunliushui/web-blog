@@ -69,7 +69,10 @@ export const RolePage = () => {
   const [checkedMenuIds, setCheckedMenuIds] = useState<string[]>([]);
   const [assignMenuLoading, setAssignMenuLoading] = useState(false);
 
-  const fetchData = async (page: number, pageSize: number): Promise<boolean> => {
+  const fetchData = async (
+    page: number,
+    pageSize: number
+  ): Promise<boolean> => {
     setLoading(true);
     try {
       const [roleRes, menuTreeRes] = await Promise.all([
@@ -245,15 +248,13 @@ export const RolePage = () => {
       title: "状态",
       dataIndex: "status",
       render: (status?: number) =>
-        status === 1 ? <Tag color="success">启用</Tag> : <Tag color="default">禁用</Tag>,
+        status === 1 ? (
+          <Tag color="success">启用</Tag>
+        ) : (
+          <Tag color="default">禁用</Tag>
+        ),
     },
     { title: "描述", dataIndex: "description", ellipsis: true },
-    {
-      title: "菜单数量",
-      dataIndex: "resourceIds",
-      width: 100,
-      render: (list: string[]) => list?.length ?? 0,
-    },
     {
       title: "操作",
       key: "actions",

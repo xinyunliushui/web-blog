@@ -5,7 +5,7 @@
  * - REACT_APP_API_PATH_USER_INFO  当前用户 GET：/user/info
  * - REACT_APP_API_PATH_USER_LIST / ROLE_LIST  分页列表 GET：/user/list、/role/list
  * - REACT_APP_API_PATH_USERS / ROLES / RESOURCES  各资源在 baseURL 下的路径前缀（含 CRUD）
- * - REACT_APP_API_AUTH_LOGIN / REACT_APP_API_AUTH_LOGOUT  登录、退出相对路径
+ * - REACT_APP_API_AUTH_LOGIN / REACT_APP_API_AUTH_LOGOUT / REACT_APP_API_AUTH_REGISTER  登录、退出、注册（POST，默认 /auth/register → …/api/auth/register）
  * - REACT_APP_API_PATH_MENU_ACCESS_TREE  用户菜单树 GET 前缀，实际请求为 {prefix}/:userId
  */
 
@@ -41,6 +41,8 @@ export const API_PATHS = {
   resources: env("REACT_APP_API_PATH_RESOURCES", "/resources"),
   authLogin: env("REACT_APP_API_AUTH_LOGIN", "/auth/login"),
   authLogout: env("REACT_APP_API_AUTH_LOGOUT", "/auth/logout"),
+  /** POST，公开注册，与 POST /user/create 入参一致 */
+  authRegister: env("REACT_APP_API_AUTH_REGISTER", "/auth/register"),
   /** GET /menu/list，菜单平铺列表 */
   menuList: env("REACT_APP_API_PATH_MENU_LIST", "/menu/list"),
   /** GET /menu/tree，菜单树 */

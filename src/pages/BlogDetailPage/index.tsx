@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Divider, Grid, Image as AntdImage, Spin, Tag, Typography, message } from "antd";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { renderMarkdown } from "../../components/MarkdownEditor";
 import { API_PATHS } from "../../config/api";
 import http from "../../services/http";
@@ -30,10 +30,16 @@ const normalizeBlogDetail = (raw: Record<string, unknown>): BlogDetail => ({
   publishedAt: toText(raw.publishedAt ?? raw.published_at ?? raw.CreatedAt) || undefined,
 });
 
+type BlogDetailLocationState = {
+  /** 由站内列表/管理预览进入时为 true，返回时使用 history.back */
+  fromBlogNav?: boolean;
+};
+
 export const BlogDetailPage = () => {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const navigate = useNavigate();
+  const location = useLocation();
   const { blogId } = useParams<{ blogId: string }>();
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
@@ -69,6 +75,16 @@ export const BlogDetailPage = () => {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const handleBackToList = () => {
+    const fromBlogNav = (location.state as BlogDetailLocationState | null)
+      ?.fromBlogNav;
+    if (fromBlogNav) {
+      window.history.back();
+      return;
+    }
+    navigate("/blogs");
+  };
+
   return (
     <div
       style={{
@@ -78,7 +94,7 @@ export const BlogDetailPage = () => {
       }}
     >
       {contextHolder}
-      <Button style={{ marginBottom: 16 }} onClick={() => navigate("/blogs")}>
+      <Button style={{ marginBottom: 16 }} onClick={handleBackToList}>
         返回列表
       </Button>
       <Spin spinning={loading}>

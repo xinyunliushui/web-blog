@@ -288,6 +288,23 @@ function parsePagedListPayload(
   return { rawItems, total, page, pageSize };
 }
 
+function buildCreateUserBody(payload: Omit<User, "id">): UnknownRecord {
+  const body: UnknownRecord = {
+    username: payload.username,
+    password: payload.password,
+    nickname: payload.nickname,
+  };
+  if (payload.mobile !== undefined) body.mobile = payload.mobile;
+  if (payload.avatar !== undefined) body.avatar = payload.avatar;
+  if (payload.introduction !== undefined)
+    body.introduction = payload.introduction;
+  if (payload.status !== undefined)
+    body.status = toApiUserStatus(payload.status);
+  const roleIds = toApiRoleIds(payload.roleIds);
+  if (roleIds !== undefined) body.roleIds = roleIds;
+  return body;
+}
+
 export const rbacApiService = {
   /** 当前登录用户：GET /user/info */
   async getCurrentUser(): Promise<User> {
@@ -334,21 +351,21 @@ export const rbacApiService = {
     });
   },
 
+  /**
+   * POST /auth/register，请求体与 createUser（/user/create）一致。
+   */
+  async registerUser(payload: Omit<User, "id">): Promise<User> {
+    const res = await http.post(
+      API_PATHS.authRegister,
+      buildCreateUserBody(payload),
+      { silent: true }
+    );
+    const data = unwrapPayload(res.data);
+    return normalizeUser((data ?? {}) as UnknownRecord);
+  },
+
   async createUser(payload: Omit<User, "id">): Promise<User> {
-    const body: UnknownRecord = {
-      username: payload.username,
-      password: payload.password,
-      nickname: payload.nickname,
-    };
-    if (payload.mobile !== undefined) body.mobile = payload.mobile;
-    if (payload.avatar !== undefined) body.avatar = payload.avatar;
-    if (payload.introduction !== undefined)
-      body.introduction = payload.introduction;
-    if (payload.status !== undefined)
-      body.status = toApiUserStatus(payload.status);
-    const roleIds = toApiRoleIds(payload.roleIds);
-    if (roleIds !== undefined) body.roleIds = roleIds;
-    const res = await http.post(API_PATHS.userCreate, body);
+    const res = await http.post(API_PATHS.userCreate, buildCreateUserBody(payload));
     const data = unwrapPayload(res.data);
     return normalizeUser((data ?? {}) as UnknownRecord);
   },
@@ -470,9 +487,7 @@ export const rbacApiService = {
     const payload = unwrapPayload(res.data) as UnknownRecord;
     const menusRaw = payload?.menus;
     const arr = Array.isArray(menusRaw) ? menusRaw : [];
-    return (arr as UnknownRecord[]).map((m) =>
-      toIdStr(m?.id ?? m?.ID)
-    );
+    return (arr as UnknownRecord[]).map((m) => toIdStr(m?.id ?? m?.ID));
   },
 
   /** POST /role/menus/update/:roleId，body: { menuIds: number[] } */

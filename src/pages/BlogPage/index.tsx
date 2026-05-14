@@ -224,7 +224,14 @@ export const BlogPage = () => {
       width: 300,
       render: (_, record) => (
         <Space>
-          <Button type="link" onClick={() => navigate(`/blogs/${record.id}`)}>
+          <Button
+            type="link"
+            onClick={() =>
+              navigate(`/blogs/${record.id}`, {
+                state: { fromBlogNav: true },
+              })
+            }
+          >
             预览文章
           </Button>
           {isPublishedBlog(record) ? (

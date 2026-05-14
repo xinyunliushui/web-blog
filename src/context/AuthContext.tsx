@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const join = (parent: string, segment: string): string => {
       const s = (segment || "").trim();
       if (!s) return parent || "/";
-      if (s.startsWith("/")) return "/" + s.replace(/^\/+/g, "").replace(/\/+$/g, "");
+      if (s.startsWith("/"))
+        return "/" + s.replace(/^\/+/g, "").replace(/\/+$/g, "");
       const p = (parent || "").replace(/\/+$/g, "");
       const n = s.replace(/^\/+/g, "").replace(/\/+$/g, "");
       return (p ? `${p}/${n}` : `/${n}`).replace(/\/+/g, "/");
@@ -208,7 +209,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }) => {
       setLoading(true);
       try {
-        await rbacApiService.createUser({
+        await rbacApiService.registerUser({
           username: payload.username,
           password: payload.password,
           nickname: payload.nickname,
