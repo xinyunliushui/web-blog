@@ -21,7 +21,7 @@ import { getRequestErrorMessage } from "../../utils/requestError";
 import styles from "./index.module.css";
 
 type BlogListItem = {
-  id: number;
+  id: string;
   title: string;
   summary: string;
   /** 正文（列表节选展示） */
@@ -86,7 +86,7 @@ const readPublishedAtFromRaw = (
 
 const normalizeBlog = (raw: Record<string, unknown>): BlogListItem => {
   return {
-    id: Number(raw.id ?? raw.ID ?? 0) || 0,
+    id: toText(raw.id ?? raw.ID),
     title: toText(raw.title),
     summary: toText(raw.summary),
     content: toText(raw.content),
@@ -181,7 +181,7 @@ const normalizeSearchHit = (raw: Record<string, unknown>): BlogListItem => {
   }
 
   return {
-    id: Number(raw.id ?? raw.ID ?? 0) || 0,
+    id: toText(raw.id ?? raw.ID),
     title: titleStr,
     summary: summaryStr,
     content: contentStr,

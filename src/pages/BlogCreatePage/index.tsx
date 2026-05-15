@@ -20,7 +20,7 @@ type BlogCreateFormValues = {
 
 type BlogEditState = {
   blog?: {
-    id?: number;
+    id?: string;
     status?: number;
     title?: string;
     content?: string;
@@ -43,11 +43,8 @@ export const BlogCreatePage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<BlogCreateFormValues>();
   const coverPreview = String(Form.useWatch("coverImage", form) ?? "").trim();
-  const editingBlogId = useMemo(() => {
-    const id = Number(blogId);
-    return Number.isFinite(id) && id > 0 ? id : 0;
-  }, [blogId]);
-  const isEditMode = editingBlogId > 0;
+  const editingBlogId = useMemo(() => (blogId ?? "").trim(), [blogId]);
+  const isEditMode = editingBlogId.length > 0;
 
   useEffect(() => {
     if (!isEditMode) {
@@ -56,7 +53,8 @@ export const BlogCreatePage = () => {
     }
     const state = (location.state ?? {}) as BlogEditState;
     const blog = state.blog;
-    if (!blog || Number(blog.id) !== editingBlogId) {
+    const bid = blog?.id != null ? String(blog.id).trim() : "";
+    if (!blog || bid !== editingBlogId) {
       messageApi.warning("未找到可编辑的文章数据，请从列表页进入编辑");
       navigate("/content/blogs", { replace: true });
       return;
@@ -92,7 +90,7 @@ export const BlogCreatePage = () => {
       };
       if (isEditMode) {
         await http.post(
-          `${API_PATHS.blogUpdate}/${encodeURIComponent(String(editingBlogId))}`,
+          `${API_PATHS.blogUpdate}/${encodeURIComponent(editingBlogId)}`,
           payload
         );
         messageApi.success("编辑文章成功");

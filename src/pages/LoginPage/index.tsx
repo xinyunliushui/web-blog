@@ -9,7 +9,7 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Form, Input, Tabs, Typography } from "antd";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getRequestErrorMessage } from "../../utils/requestError";
 import { encryptPassword } from "../../utils/rsa";
@@ -23,10 +23,16 @@ type LoginFormValues = {
   password: string;
 };
 
+type LoginLocationState = { tab?: "blog" | "admin" };
+
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loading, login } = useAuth();
-  const [activeTab, setActiveTab] = useState<"blog" | "admin">("blog");
+  const [activeTab, setActiveTab] = useState<"blog" | "admin">(() => {
+    const state = location.state as LoginLocationState | null;
+    return state?.tab === "admin" ? "admin" : "blog";
+  });
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleFinish = async (values: LoginFormValues) => {

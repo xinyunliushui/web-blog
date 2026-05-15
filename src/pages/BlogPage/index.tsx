@@ -8,7 +8,7 @@ import { getRequestErrorMessage } from "../../utils/requestError";
 import { runDeduped } from "../../utils/inflightDedupe";
 
 type BlogRecord = {
-  id: number;
+  id: string;
   title: string;
   content: string;
   summary: string;
@@ -50,10 +50,10 @@ const toText = (v: unknown): string => {
 };
 
 const normalizeBlog = (raw: Record<string, unknown>): BlogRecord => {
-  const idRaw = raw.id ?? raw.ID ?? 0;
+  const idRaw = raw.id ?? raw.ID ?? "";
   const statusRaw = raw.status ?? 1;
   return {
-    id: Number(idRaw) || 0,
+    id: toText(idRaw),
     title: toText(raw.title),
     content: toText(raw.content),
     summary: toText(raw.summary),
@@ -80,7 +80,7 @@ export const BlogPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [publishLoadingId, setPublishLoadingId] = useState<number | null>(null);
+  const [publishLoadingId, setPublishLoadingId] = useState<string | null>(null);
   const [blogs, setBlogs] = useState<BlogRecord[]>([]);
   const [pagination, setPagination] = useState<ListState>({
     current: 1,

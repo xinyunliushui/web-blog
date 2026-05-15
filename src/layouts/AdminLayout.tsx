@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Layout,
   Menu,
@@ -8,7 +8,7 @@ import {
   Form,
   Input,
   Modal,
-  message,
+  Typography,
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -26,13 +26,13 @@ import {
 const { Header, Sider, Content } = Layout;
 
 export const AdminLayout = () => {
-  const [messageApi, contextHolder] = message.useMessage();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, accessMenuTree, accessMenuLoading } = useAuth();
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [changePwdSubmitting, setChangePwdSubmitting] = useState(false);
+  const [logoutRedirectSeconds, setLogoutRedirectSeconds] = useState(0);
   const [changePwdForm] = Form.useForm<{
     oldPassword: string;
     newPassword: string;
@@ -54,6 +54,26 @@ export const AdminLayout = () => {
     setOpenKeys((prev) => Array.from(new Set([...prev, ...required])));
   }, [location.pathname, menuItems]);
 
+  const redirectToLoginAfterLogout = useCallback(async () => {
+    setLogoutRedirectSeconds(0);
+    await logout();
+    navigate("/login", { replace: true, state: { tab: "admin" } });
+  }, [logout, navigate]);
+
+  useEffect(() => {
+    if (logoutRedirectSeconds <= 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (logoutRedirectSeconds <= 1) {
+        void redirectToLoginAfterLogout();
+        return;
+      }
+      setLogoutRedirectSeconds((prev) => prev - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [logoutRedirectSeconds, redirectToLoginAfterLogout]);
+
   const openChangePwdModal = () => {
     changePwdForm.resetFields();
     setChangePwdOpen(true);
@@ -73,9 +93,9 @@ export const AdminLayout = () => {
         oldPassword: encryptPassword(values.oldPassword),
         newPassword: encryptPassword(values.newPassword),
       });
-      messageApi.success("密码修改成功");
       setChangePwdOpen(false);
       changePwdForm.resetFields();
+      setLogoutRedirectSeconds(3);
     } finally {
       setChangePwdSubmitting(false);
     }
@@ -98,9 +118,7 @@ export const AdminLayout = () => {
   ];
 
   return (
-    <>
-      {contextHolder}
-      <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ minHeight: "100vh" }}>
       <Sider breakpoint="lg" collapsedWidth="0">
         <div
           style={{
@@ -217,8 +235,20 @@ export const AdminLayout = () => {
           </Form.Item>
         </Form>
       </Modal>
-      </Layout>
-    </>
+      <Modal
+        title="密码修改成功"
+        open={logoutRedirectSeconds > 0}
+        maskClosable={false}
+        closable={false}
+        cancelButtonProps={{ style: { display: "none" } }}
+        okText="立即退出登录"
+        onOk={() => void redirectToLoginAfterLogout()}
+      >
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          {logoutRedirectSeconds} 秒后自动退出登录并跳转到登录页
+        </Typography.Paragraph>
+      </Modal>
+    </Layout>
   );
 };
 

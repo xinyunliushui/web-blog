@@ -27,13 +27,13 @@ type ResourceFormValues = {
   type: 1 | 2 | 3;
   path: string;
   redirect?: string;
-  parentId?: number;
+  parentId?: string;
   sort?: number;
   status?: 1 | 2;
 };
 
 type MenuItem = {
-  id: number;
+  id: string;
   name: string;
   title: string;
   icon?: string;
@@ -42,10 +42,38 @@ type MenuItem = {
   sort: number;
   status: 1 | 2;
   type: 1 | 2 | 3;
-  parentId: number;
+  /** 根节点为空字符串；与后端 JSON 对齐 */
+  parentId?: string | null;
   creator?: string;
   children?: MenuItem[];
 };
+
+const ROOT_PARENT_VALUE = "";
+
+function normalizeMenuItemFromApi(raw: unknown): MenuItem {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const pid = r.parentId ?? r.ParentId;
+  let parentStr = "";
+  if (pid != null && pid !== "" && pid !== 0 && pid !== "0") {
+    parentStr = String(pid);
+  }
+  return {
+    id: String(r.id ?? r.ID ?? ""),
+    name: String(r.name ?? ""),
+    title: String(r.title ?? ""),
+    icon: r.icon != null ? String(r.icon) : undefined,
+    path: String(r.path ?? ""),
+    redirect: r.redirect != null ? String(r.redirect) : undefined,
+    sort: Number(r.sort ?? 999) || 999,
+    status: (Number(r.status ?? 1) === 2 ? 2 : 1) as 1 | 2,
+    type: (Number(r.type ?? r.Type ?? 1) || 1) as 1 | 2 | 3,
+    parentId: parentStr,
+    creator: r.creator != null ? String(r.creator) : undefined,
+    children: Array.isArray(r.children)
+      ? (r.children as unknown[]).map(normalizeMenuItemFromApi)
+      : undefined,
+  };
+}
 
 export const ResourcePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -63,7 +91,10 @@ export const ResourcePage = () => {
       const res = await runDeduped(`menuTree:${API_PATHS.menuTree}`, () =>
         http.get(API_PATHS.menuTree)
       );
-      setResources((res.data?.data ?? []) as MenuItem[]);
+      const raw = (res.data?.data ?? []) as unknown[];
+      setResources(
+        Array.isArray(raw) ? raw.map(normalizeMenuItemFromApi) : []
+      );
       return true;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -109,7 +140,12 @@ export const ResourcePage = () => {
     setEditing(null);
     setResourceModalOpen(true);
     form.resetFields();
-    form.setFieldsValue({ type: 1, status: 1, sort: 999, parentId: 0 });
+    form.setFieldsValue({
+      type: 1,
+      status: 1,
+      sort: 999,
+      parentId: ROOT_PARENT_VALUE,
+    });
   };
 
   const openEditModal = (record: MenuItem) => {
@@ -122,7 +158,7 @@ export const ResourcePage = () => {
       type: record.type,
       path: record.path,
       redirect: record.redirect ?? "",
-      parentId: record.parentId ?? 0,
+      parentId: record.parentId?.trim() ? record.parentId : ROOT_PARENT_VALUE,
       sort: record.sort ?? 999,
       status: record.status ?? 1,
     });
@@ -131,6 +167,7 @@ export const ResourcePage = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      const parentRaw = values.parentId?.trim() ?? "";
       const payload = {
         name: values.name.trim(),
         title: values.title.trim(),
@@ -140,11 +177,11 @@ export const ResourcePage = () => {
         sort: values.sort ?? 999,
         status: editing ? values.status ?? 1 : 1,
         Type: values.type,
-        parentId: values.parentId ?? 0,
+        parentId: parentRaw,
       };
       if (editing) {
         await http.post(
-          `${API_PATHS.menuUpdate}/${encodeURIComponent(String(editing.id))}`,
+          `${API_PATHS.menuUpdate}/${encodeURIComponent(editing.id)}`,
           payload
         );
         messageApi.success("资源编辑成功");
@@ -187,9 +224,10 @@ export const ResourcePage = () => {
       title: "父级资源",
       dataIndex: "parentId",
       ellipsis: true,
-      render: (parentId?: number) => {
-        if (!parentId) return "根节点";
-        return parentTitleMap.get(parentId) ?? parentId;
+      render: (parentId?: string | null) => {
+        const p = parentId?.trim();
+        if (!p) return "根节点";
+        return parentTitleMap.get(p) ?? p;
       },
     },
     { title: "排序", dataIndex: "sort" },
@@ -233,7 +271,7 @@ export const ResourcePage = () => {
   }, [resources]);
 
   const parentTitleMap = useMemo(() => {
-    const m = new Map<number, string>();
+    const m = new Map<string, string>();
     flatResources.forEach((item) => m.set(item.id, item.title));
     return m;
   }, [flatResources]);
@@ -322,7 +360,11 @@ export const ResourcePage = () => {
           </Form.Item>
           <Form.Item label="父级资源" name="parentId">
             <Select
-              options={[{ label: "根节点", value: 0 }, ...parentOptions]}
+              allowClear
+              options={[
+                { label: "根节点", value: ROOT_PARENT_VALUE },
+                ...parentOptions,
+              ]}
               placeholder="默认根节点"
             />
           </Form.Item>

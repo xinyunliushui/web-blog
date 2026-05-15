@@ -86,6 +86,7 @@ let roles: Role[] = [
     code: 'admin',
     description: '拥有全部菜单与操作权限',
     resourceIds: resources.map((r) => r.id),
+    menus: resources.map((r) => ({ id: r.id })),
   },
   {
     id: 'role_operator',
@@ -95,6 +96,9 @@ let roles: Role[] = [
     resourceIds: resources
       .filter((r) => r.code.startsWith('menu:user') || r.code.startsWith('page:user') || r.code.startsWith('button:user'))
       .map((r) => r.id),
+    menus: resources
+      .filter((r) => r.code.startsWith('menu:user') || r.code.startsWith('page:user') || r.code.startsWith('button:user'))
+      .map((r) => ({ id: r.id })),
   },
 ];
 
@@ -192,7 +196,12 @@ export const rbacMockService = {
 
   async createRole(payload: Omit<Role, 'id'>): Promise<Role> {
     await delay();
-    const newRole: Role = { ...payload, id: generateId('role') };
+    const newRole: Role = {
+      ...payload,
+      id: generateId('role'),
+      menus: payload.menus ?? [],
+      resourceIds: payload.resourceIds ?? [],
+    };
     roles = [...roles, newRole];
     return newRole;
   },
@@ -228,8 +237,11 @@ export const rbacMockService = {
     return r?.resourceIds ?? [];
   },
 
-  async updateRoleMenus(id: string, menuIds: number[]): Promise<void> {
-    await this.updateRole(id, { resourceIds: menuIds.map(String) });
+  async updateRoleMenus(id: string, menuIds: string[]): Promise<void> {
+    await this.updateRole(id, {
+      resourceIds: menuIds,
+      menus: menuIds.map((mid) => ({ id: mid })),
+    });
   },
 
   // 资源相关

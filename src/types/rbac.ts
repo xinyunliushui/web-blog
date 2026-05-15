@@ -30,6 +30,11 @@ export interface Role {
   description?: string;
   /** 拥有的资源 ID 列表 */
   resourceIds: string[];
+  /**
+   * 列表接口行数据中的已绑定菜单（与 go-blog `menus` 一致）；
+   * 未返回该字段时由前端置为 undefined，仅依据此字段展示是否已绑定菜单。
+   */
+  menus?: { id: string }[];
 }
 
 export type UserStatus = 'enabled' | 'disabled';

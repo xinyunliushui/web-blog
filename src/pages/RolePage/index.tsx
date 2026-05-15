@@ -36,7 +36,7 @@ const DEFAULT_PAGE_SIZE = 10;
 const { SHOW_PARENT } = TreeSelect;
 
 type MenuTreeNode = {
-  id: number;
+  id: string;
   title: string;
   name: string;
   type: number;
@@ -167,13 +167,13 @@ export const RolePage = () => {
   };
 
   const treeData = useMemo<TreeOption[]>(() => {
-    const mapNode = (node: MenuTreeNode): TreeOption => {
+      const mapNode = (node: MenuTreeNode): TreeOption => {
       const typeLabel =
         node.type === 1 ? "菜单" : node.type === 2 ? "页面" : "按钮";
       return {
         title: `${node.title || node.name} (${typeLabel})`,
-        value: String(node.id),
-        key: String(node.id),
+        value: node.id,
+        key: node.id,
         children: node.children?.map(mapNode),
       };
     };
@@ -201,14 +201,15 @@ export const RolePage = () => {
     if (!resourceModalRole) return;
     try {
       const selectedMenuIds = checkedMenuIds
-        .map((id) => Number(id))
-        .filter((n) => Number.isFinite(n) && n > 0);
+        .map((id) => String(id).trim())
+        .filter(Boolean);
 
-      const parentMap = new Map<number, number>();
-      const buildParentMap = (nodes: MenuTreeNode[], parentId?: number) => {
+      const parentMap = new Map<string, string>();
+      const buildParentMap = (nodes: MenuTreeNode[], parentId?: string) => {
         for (const node of nodes) {
-          if (parentId && parentId > 0) {
-            parentMap.set(node.id, parentId);
+          const pid = parentId?.trim();
+          if (pid) {
+            parentMap.set(node.id, pid);
           }
           if (node.children?.length) {
             buildParentMap(node.children, node.id);
@@ -217,10 +218,10 @@ export const RolePage = () => {
       };
       buildParentMap(menuTree);
 
-      const finalIds = new Set<number>(selectedMenuIds);
+      const finalIds = new Set<string>(selectedMenuIds);
       for (const id of selectedMenuIds) {
         let parentId = parentMap.get(id);
-        while (parentId && parentId > 0) {
+        while (parentId && parentId.trim() !== "") {
           finalIds.add(parentId);
           parentId = parentMap.get(parentId);
         }
@@ -253,6 +254,20 @@ export const RolePage = () => {
         ) : (
           <Tag color="default">禁用</Tag>
         ),
+    },
+    {
+      title: "菜单绑定",
+      key: "menuBind",
+      width: 160,
+      render: (_, record) => {
+        const menus = record.menus;
+        const bound = Array.isArray(menus) && menus.length > 0;
+        return bound ? (
+          <Tag color="success">已绑定菜单</Tag>
+        ) : (
+          <Tag color="warning">角色未绑定菜单</Tag>
+        );
+      },
     },
     { title: "描述", dataIndex: "description", ellipsis: true },
     {

@@ -43,7 +43,7 @@ export const RegisterPage = () => {
     }
     const timer = window.setTimeout(() => {
       if (redirectSeconds <= 1) {
-        navigate("/login", { replace: true });
+        navigate("/login", { replace: true, state: { tab: "admin" } });
         return;
       }
       setRedirectSeconds((prev) => prev - 1);
@@ -179,7 +179,9 @@ export const RegisterPage = () => {
           closable={false}
           cancelButtonProps={{ style: { display: "none" } }}
           okText="立即去登录"
-          onOk={() => navigate("/login", { replace: true })}
+          onOk={() =>
+            navigate("/login", { replace: true, state: { tab: "admin" } })
+          }
         >
           <Typography.Paragraph style={{ marginBottom: 0 }}>
             {redirectSeconds} 秒后自动跳转到登录页

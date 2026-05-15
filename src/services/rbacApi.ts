@@ -37,11 +37,11 @@ function toApiUserStatus(s: UserStatus): number {
   return s === "enabled" ? 1 : 2;
 }
 
-function toApiRoleIds(roleIds: string[] | undefined): number[] | undefined {
+/** 提交给后端的角色 ID 列表（UUID 字符串，去空） */
+function toApiRoleIds(roleIds: string[] | undefined): string[] | undefined {
   if (!roleIds) return undefined;
-  return roleIds
-    .map((rid) => Number(rid))
-    .filter((rid) => Number.isFinite(rid) && rid > 0);
+  const out = roleIds.map((rid) => String(rid).trim()).filter(Boolean);
+  return out.length ? out : undefined;
 }
 
 function normalizeUser(raw: UnknownRecord): User {
@@ -125,9 +125,17 @@ function normalizeUserInfoPayload(raw: UnknownRecord): User {
 
 function normalizeRole(raw: UnknownRecord): Role {
   const menusRaw = raw.menus as unknown;
+  const menus: Role["menus"] = Array.isArray(menusRaw)
+    ? (menusRaw as UnknownRecord[])
+        .map((m) => ({ id: toIdStr(m?.id ?? m?.ID) }))
+        .filter((m) => m.id !== "")
+    : undefined;
+
   let resourceIds: string[] = [];
   if (Array.isArray(raw.resourceIds)) {
     resourceIds = (raw.resourceIds as unknown[]).map(toIdStr);
+  } else if (menus != null && menus.length > 0) {
+    resourceIds = menus.map((m) => m.id);
   } else if (Array.isArray(menusRaw)) {
     resourceIds = (menusRaw as UnknownRecord[]).map((m) => toIdStr(m?.id ?? m));
   }
@@ -145,6 +153,7 @@ function normalizeRole(raw: UnknownRecord): Role {
         ? String(raw.desc)
         : undefined,
     resourceIds,
+    menus,
   };
 }
 
@@ -157,7 +166,7 @@ function normalizeAccessMenuNode(raw: UnknownRecord): AccessMenuNode {
     );
   }
   return {
-    id: Number(raw.id ?? raw.ID ?? 0),
+    id: toIdStr(raw.id ?? raw.ID),
     name: String(raw.name ?? ""),
     title: String(raw.title ?? raw.name ?? ""),
     icon:
@@ -197,7 +206,11 @@ function normalizeResource(raw: UnknownRecord): Resource {
     type,
     path: raw.path != null ? String(raw.path) : undefined,
     parentId:
-      parent === null || parent === undefined || parent === 0 || parent === "0"
+      parent === null ||
+      parent === undefined ||
+      parent === 0 ||
+      parent === "0" ||
+      String(parent).trim() === ""
         ? null
         : toIdStr(parent),
     order:
@@ -405,8 +418,8 @@ export const rbacApiService = {
     currentUser: User
   ): Promise<User> {
     const normalizedRoleIds = roleIds
-      .map((rid) => Number(rid))
-      .filter((rid) => Number.isFinite(rid) && rid > 0);
+      .map((rid) => String(rid).trim())
+      .filter(Boolean);
 
     const body: UnknownRecord = {
       username: currentUser.username,
@@ -490,8 +503,8 @@ export const rbacApiService = {
     return (arr as UnknownRecord[]).map((m) => toIdStr(m?.id ?? m?.ID));
   },
 
-  /** POST /role/menus/update/:roleId，body: { menuIds: number[] } */
-  async updateRoleMenus(roleId: string, menuIds: number[]): Promise<void> {
+  /** POST /role/menus/update/:roleId，body: { menuIds: string[] } */
+  async updateRoleMenus(roleId: string, menuIds: string[]): Promise<void> {
     await http.post(
       `${API_PATHS.roles}/menus/update/${encodeURIComponent(roleId)}`,
       { menuIds }

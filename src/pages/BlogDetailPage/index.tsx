@@ -7,7 +7,7 @@ import http from "../../services/http";
 import { getRequestErrorMessage } from "../../utils/requestError";
 
 type BlogDetail = {
-  id: number;
+  id: string;
   title: string;
   summary: string;
   content: string;
@@ -20,7 +20,7 @@ type BlogDetail = {
 const toText = (v: unknown): string => (v == null ? "" : String(v));
 
 const normalizeBlogDetail = (raw: Record<string, unknown>): BlogDetail => ({
-  id: Number(raw.id ?? raw.ID ?? 0) || 0,
+  id: toText(raw.id ?? raw.ID),
   title: toText(raw.title),
   summary: toText(raw.summary),
   content: toText(raw.content),
@@ -48,8 +48,8 @@ export const BlogDetailPage = () => {
   const html = useMemo(() => renderMarkdown(detail?.content ?? ""), [detail?.content]);
 
   useEffect(() => {
-    const id = Number(blogId);
-    if (!Number.isFinite(id) || id <= 0) {
+    const id = (blogId ?? "").trim();
+    if (!id) {
       messageApi.error("文章ID不正确");
       navigate("/blogs", { replace: true });
       return;
@@ -57,7 +57,7 @@ export const BlogDetailPage = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await http.get(`${API_PATHS.blogDetail}/${encodeURIComponent(String(id))}`, {
+        const res = await http.get(`${API_PATHS.blogDetail}/${encodeURIComponent(id)}`, {
           silent: true,
         });
         setDetail(normalizeBlogDetail((res.data?.data ?? {}) as Record<string, unknown>));

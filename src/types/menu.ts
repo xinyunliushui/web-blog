@@ -2,7 +2,7 @@
  * 与 go-blog model.Menu / GET /menu/access/tree/:userId 返回的树节点字段对齐
  */
 export interface AccessMenuNode {
-  id: number;
+  id: string;
   name: string;
   title: string;
   icon?: string | null;
