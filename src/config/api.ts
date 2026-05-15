@@ -1,11 +1,11 @@
 /**
  * 前端 API 配置（CRA：使用 REACT_APP_* 环境变量，可在 .env / .env.local 中覆盖）
  *
- * - REACT_APP_API_BASE_URL  默认 http://localhost:8080/api（与 http://localhost:3000 同站，便于写入 Cookie）
+ * - REACT_APP_API_BASE_URL  默认 http://localhost:8080/api/v1（与 http://localhost:3000 同站，便于写入 Cookie）
  * - REACT_APP_API_PATH_USER_INFO  当前用户 GET：/user/info
  * - REACT_APP_API_PATH_USER_LIST / ROLE_LIST  分页列表 GET：/user/list、/role/list
  * - REACT_APP_API_PATH_USERS / ROLES / RESOURCES  各资源在 baseURL 下的路径前缀（含 CRUD）
- * - REACT_APP_API_AUTH_LOGIN / REACT_APP_API_AUTH_LOGOUT / REACT_APP_API_AUTH_REGISTER  登录、退出、注册（POST，默认 /auth/register → …/api/auth/register）
+ * - REACT_APP_API_AUTH_LOGIN / REACT_APP_API_AUTH_LOGOUT / REACT_APP_API_AUTH_REGISTER  登录、退出、注册（POST，默认 /auth/register → …/api/v1/auth/register）
  * - REACT_APP_API_PATH_MENU_ACCESS_TREE  用户菜单树 GET 前缀，实际请求为 {prefix}/:userId
  */
 
@@ -14,10 +14,10 @@ const env = (key: string, fallback: string): string => {
   return v != null && String(v).trim() !== "" ? String(v).trim() : fallback;
 };
 
-/** API 根地址（含 /api 前缀，不含末尾 /） */
+/** API 根地址（含 /api/v1 前缀，不含末尾 /） */
 export const API_BASE_URL = env(
   "REACT_APP_API_BASE_URL",
-  "http://localhost:8080/api"
+  "http://localhost:8080/api/v1"
 );
 
 /** 系统管理各模块在 API_BASE_URL 下的路径（以 / 开头） */
