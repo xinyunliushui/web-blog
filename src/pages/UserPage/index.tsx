@@ -120,6 +120,8 @@ export const UserPage = () => {
       if (!editingUser) {
         return;
       }
+      // roleIds 必须与打开弹窗时该行用户一致（后端禁止编辑页擅自改角色；无角色则为 []）
+      const roleIdsFromRow = (editingUser.roleIds ?? []).map((id) => String(id));
       await rbacApiService.updateUser(editingUser.id, {
         username: values.username,
         nickname: values.nickname,
@@ -127,7 +129,7 @@ export const UserPage = () => {
         avatar: values.avatar,
         introduction: values.introduction,
         status: values.status,
-        roleIds: (editingUser.roleIds ?? []).map((id) => String(id)),
+        roleIds: roleIdsFromRow,
       });
       messageApi.success("用户编辑成功");
       setEditingUser(null);

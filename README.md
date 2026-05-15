@@ -4,9 +4,10 @@
 
 ## 本地开发
 ```bash
-# 启动
+# 安装依赖
+yarn
+# 本地启动，启动成功后会在默认浏览器中打开 http://localhost:3000
 yarn start
-# 浏览器中打开 http://localhost:3000
 ```
 
 

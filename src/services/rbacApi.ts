@@ -397,8 +397,13 @@ export const rbacApiService = {
     if (payload.status !== undefined)
       body.status = toApiUserStatus(payload.status);
     if (payload.password) body.password = payload.password;
-    const roleIds = toApiRoleIds(payload.roleIds);
-    if (roleIds !== undefined) body.roleIds = roleIds;
+    // 编辑用户等场景：只要调用方传入 roleIds（含空数组），就必须出现在请求体里，
+    // 否则 go-blog CreateOrUpdateUserRequest 的 roleIds required 校验会失败。
+    if (payload.roleIds !== undefined) {
+      body.roleIds = payload.roleIds
+        .map((rid) => String(rid).trim())
+        .filter(Boolean);
+    }
 
     const res = await http.post(
       `${API_PATHS.userUpdate}/${encodeURIComponent(id)}`,
