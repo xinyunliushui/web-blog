@@ -419,35 +419,26 @@ export const BlogPublicListPage = () => {
                       flexDirection: isMobile ? "column" : "row",
                     }}
                   >
-                    {item.coverImage ? (
-                      <AntdImage
-                        src={item.coverImage}
-                        alt={item.title}
-                        preview={false}
-                        width={isMobile ? "100%" : 220}
-                        height={isMobile ? 180 : 130}
-                        wrapperStyle={{
-                          width: isMobile ? "100%" : undefined,
-                          lineHeight: 0,
-                        }}
-                        style={{
-                          objectFit: "cover",
-                          borderRadius: 6,
-                          flexShrink: 0,
-                          display: "block",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: isMobile ? "100%" : 220,
-                          height: isMobile ? 120 : 130,
-                          flexShrink: 0,
-                          borderRadius: 6,
-                          background: "rgba(0,0,0,0.06)",
-                        }}
-                      />
-                    )}
+                    <section
+                      className={`${styles.coverSlot} ${
+                        isMobile ? styles.coverSlotMobile : ""
+                      }`}
+                    >
+                      <section
+                        className={`${styles.coverFrame} ${
+                          isMobile ? styles.coverFrameMobile : ""
+                        }`}
+                      >
+                        {item.coverImage ? (
+                          <AntdImage
+                            src={item.coverImage}
+                            alt={item.title}
+                            preview={false}
+                            wrapperClassName={styles.coverImgWrap}
+                          />
+                        ) : null}
+                      </section>
+                    </section>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {isSearchMode && item.publishedAt?.trim() ? (
                         <Typography.Paragraph
